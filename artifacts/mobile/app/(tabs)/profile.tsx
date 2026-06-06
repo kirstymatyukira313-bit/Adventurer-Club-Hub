@@ -38,7 +38,7 @@ export default function ProfileScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     logout();
     setShowLogoutModal(false);
-    router.replace("/(onboarding)");
+    router.replace("/(onboarding)/welcome");
   };
 
   const menuSections: { title: string; items: MenuItem[] }[] = [

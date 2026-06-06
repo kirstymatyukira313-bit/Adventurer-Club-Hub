@@ -12,6 +12,7 @@ import type {
   AdventurerClass,
   AttendanceRecord,
   ClubInfo,
+  DriveFile,
   Expense,
   LeaderRole,
   Member,
@@ -32,6 +33,7 @@ interface AppState {
   subscriptionTarget: number;
   subscriptionAmount: number;
   expenses: Expense[];
+  driveFiles: DriveFile[];
 }
 
 const DEFAULT_STATE: AppState = {
@@ -50,6 +52,7 @@ const DEFAULT_STATE: AppState = {
   subscriptionTarget: 200,
   subscriptionAmount: 20,
   expenses: [],
+  driveFiles: [],
 };
 
 interface AppContextType extends AppState {
@@ -71,6 +74,8 @@ interface AppContextType extends AppState {
   getTotalCollected: () => number;
   getTotalExpenses: () => number;
   getUnpaidCount: () => number;
+  addDriveFile: (file: Omit<DriveFile, "id" | "addedAt">) => void;
+  deleteDriveFile: (id: string) => void;
   logout: () => void;
 }
 
@@ -251,6 +256,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return state.members.filter((m) => !m.hasPaid).length;
   }, [state]);
 
+  const addDriveFile = useCallback(
+    (file: Omit<DriveFile, "id" | "addedAt">) => {
+      const newFile: DriveFile = {
+        ...file,
+        id: generateId(),
+        addedAt: new Date().toISOString(),
+      };
+      saveState({ ...state, driveFiles: [...(state.driveFiles ?? []), newFile] });
+    },
+    [state]
+  );
+
+  const deleteDriveFile = useCallback(
+    (id: string) => {
+      saveState({ ...state, driveFiles: (state.driveFiles ?? []).filter((f) => f.id !== id) });
+    },
+    [state]
+  );
+
   const logout = useCallback(() => {
     saveState(DEFAULT_STATE);
   }, [state]);
@@ -275,6 +299,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getTotalCollected,
         getTotalExpenses,
         getUnpaidCount,
+        addDriveFile,
+        deleteDriveFile,
         logout,
       }}
     >

@@ -31,7 +31,8 @@ export default function LessonsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const { lessonCompletions } = useApp();
+  const { lessonCompletions, driveFiles } = useApp();
+  const driveCount = (driveFiles ?? []).length;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -43,9 +44,40 @@ export default function LessonsScreen() {
         }}
       >
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.navy }]}>Lessons</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            All classes
+          <View>
+            <Text style={[styles.title, { color: colors.navy }]}>Lessons</Text>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+              All classes
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.driveCard, { backgroundColor: "#35A7FF12", borderColor: "#35A7FF40" }]}
+          onPress={() => router.push("/drive-files")}
+          activeOpacity={0.85}
+        >
+          <View style={styles.driveCardLeft}>
+            <View style={[styles.driveIconBox, { backgroundColor: "#35A7FF20" }]}>
+              <Text style={styles.driveIcon}>📁</Text>
+            </View>
+            <View>
+              <Text style={[styles.driveTitle, { color: "#0B132B" }]}>
+                Google Drive Files
+              </Text>
+              <Text style={[styles.driveSubtitle, { color: "#35A7FF" }]}>
+                {driveCount > 0
+                  ? `${driveCount} file${driveCount !== 1 ? "s" : ""} linked`
+                  : "Add your PDF lesson materials"}
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.driveArrow, { color: "#35A7FF" }]}>›</Text>
+        </TouchableOpacity>
+
+        <View style={styles.sectionLabel}>
+          <Text style={[styles.sectionLabelText, { color: colors.mutedForeground }]}>
+            BUILT-IN LESSONS
           </Text>
         </View>
 
@@ -66,15 +98,8 @@ export default function LessonsScreen() {
                 activeOpacity={0.85}
               >
                 <View style={styles.cardTop}>
-                  <View
-                    style={[
-                      styles.classBadge,
-                      { backgroundColor: `${clsColor}20` },
-                    ]}
-                  >
-                    <Text style={[styles.classBadgeText, { color: clsColor }]}>
-                      {cls}
-                    </Text>
+                  <View style={[styles.classBadge, { backgroundColor: `${clsColor}20` }]}>
+                    <Text style={[styles.classBadgeText, { color: clsColor }]}>{cls}</Text>
                   </View>
                   <ProgressRing
                     size={48}
@@ -115,9 +140,39 @@ export default function LessonsScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: { paddingHorizontal: 20, marginBottom: 20 },
+  headerRow: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", lineHeight: 36 },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 4 },
+  driveCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  driveCardLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  driveIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  driveIcon: { fontSize: 24 },
+  driveTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  driveSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
+  driveArrow: { fontSize: 28, fontFamily: "Inter_400Regular", marginLeft: 8 },
+  sectionLabel: { paddingHorizontal: 20, marginBottom: 12 },
+  sectionLabelText: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
   grid: { paddingHorizontal: 20, gap: 16 },
   card: {
     borderRadius: 20,
@@ -131,11 +186,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  classBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
+  classBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   classBadgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   lessonTitle: { fontSize: 17, fontFamily: "Inter_700Bold", lineHeight: 24 },
   weekLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
