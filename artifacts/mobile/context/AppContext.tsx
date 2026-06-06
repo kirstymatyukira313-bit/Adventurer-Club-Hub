@@ -24,6 +24,15 @@ interface LessonCompletions {
   [lessonId: string]: string[];
 }
 
+export interface ReminderSettings {
+  enabled: boolean;
+  meetingDay: number;
+  meetingHour: number;
+  meetingMinute: number;
+  morningReminder: boolean;
+  prepReminder: boolean;
+}
+
 interface AppState {
   isOnboardingComplete: boolean;
   club: ClubInfo;
@@ -34,7 +43,17 @@ interface AppState {
   subscriptionAmount: number;
   expenses: Expense[];
   driveFiles: DriveFile[];
+  reminders: ReminderSettings;
 }
+
+const DEFAULT_REMINDERS: ReminderSettings = {
+  enabled: false,
+  meetingDay: 6,
+  meetingHour: 8,
+  meetingMinute: 0,
+  morningReminder: true,
+  prepReminder: true,
+};
 
 const DEFAULT_STATE: AppState = {
   isOnboardingComplete: false,
@@ -53,6 +72,7 @@ const DEFAULT_STATE: AppState = {
   subscriptionAmount: 20,
   expenses: [],
   driveFiles: [],
+  reminders: DEFAULT_REMINDERS,
 };
 
 interface AppContextType extends AppState {
@@ -76,6 +96,7 @@ interface AppContextType extends AppState {
   getUnpaidCount: () => number;
   addDriveFile: (file: Omit<DriveFile, "id" | "addedAt">) => void;
   deleteDriveFile: (id: string) => void;
+  updateReminders: (settings: ReminderSettings) => void;
   logout: () => void;
 }
 
@@ -275,6 +296,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state]
   );
 
+  const updateReminders = useCallback(
+    (settings: ReminderSettings) => {
+      saveState({ ...state, reminders: settings });
+    },
+    [state]
+  );
+
   const logout = useCallback(() => {
     saveState(DEFAULT_STATE);
   }, [state]);
@@ -301,6 +329,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getUnpaidCount,
         addDriveFile,
         deleteDriveFile,
+        updateReminders,
         logout,
       }}
     >
