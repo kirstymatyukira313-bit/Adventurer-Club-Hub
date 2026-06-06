@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "AP2zFcAAo8Otc1jSEf1oE"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Pzzgyv9pItS4wdxMixfP5"
+uri = "file://artifacts/mobile/assets/images/onboarding_welcome.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ue7m2IwX5PuYb0Yj3DwFk"
+uri = "file://artifacts/mobile/assets/images/onboarding_success.png"
+type = "image"
+title = "generated_image"
