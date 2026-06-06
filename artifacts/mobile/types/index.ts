@@ -74,3 +74,11 @@ export interface ClubInfo {
   conference: string;
   district: string;
 }
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  adventurerClass: AdventurerClass | "General";
+  driveUrl: string;
+  addedAt: string;
+}
