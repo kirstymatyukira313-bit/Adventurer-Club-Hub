@@ -31,7 +31,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const { club, members, logout } = useApp();
+  const { club, members, logout, reminders } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = () => {
@@ -63,6 +63,19 @@ export default function ProfileScreen() {
           label: "Curriculum Planning",
           sublabel: "Manage lesson sequences",
           onPress: () => router.push("/curriculum"),
+        },
+      ],
+    },
+    {
+      title: "Reminders",
+      items: [
+        {
+          icon: "bell",
+          label: "Meeting Reminders",
+          sublabel: reminders?.enabled
+            ? `On — ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][reminders.meetingDay]}s`
+            : "Off",
+          onPress: () => router.push("/reminders"),
         },
       ],
     },
