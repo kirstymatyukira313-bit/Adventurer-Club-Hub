@@ -82,3 +82,19 @@ export interface DriveFile {
   driveUrl: string;
   addedAt: string;
 }
+
+export type {
+  AdventurerClassDef,
+  CurriculumLesson,
+  LessonSection as CurriculumLessonSection,
+  CraftSection,
+  ActivitySection,
+  BaseSection,
+  Material,
+  MemoryVerse,
+  SectionType,
+  CurriculumProgress,
+  LessonCompletion,
+  SectionCompletion,
+  ClassProgress,
+} from "@/curriculum/types";
