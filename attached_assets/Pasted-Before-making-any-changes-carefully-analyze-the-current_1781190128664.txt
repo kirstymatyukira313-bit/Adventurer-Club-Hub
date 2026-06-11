@@ -1,0 +1,80 @@
+Before making any changes, carefully analyze the current curriculum implementation for Little Lamb.
+
+IMPORTANT:
+
+The Little Lamb curriculum implementation is now the reference implementation and must be treated as the source of truth.
+
+Do NOT:
+
+* redesign any screens
+* modify navigation
+* change lesson detail layouts
+* alter progress tracking
+* alter completion tracking
+* refactor curriculum architecture
+* rename existing data structures
+* modify TypeScript interfaces unless absolutely necessary
+* change existing Little Lamb content
+
+Your task is ONLY to import the attached Builder Activity Book into the existing curriculum system.
+
+Approach:
+
+1. First inspect how Little Lamb lessons are currently structured.
+2. Reuse the exact same schema, field names, hierarchy, and lesson organization.
+3. Map Builder content into that existing structure.
+4. Ensure Builder lessons automatically work with all existing lesson screens.
+
+For every Builder lesson, extract and preserve:
+
+* Lesson Title
+* Main Objective
+* Memory Verse
+* Key Learning Outcome
+* Materials Needed
+* Activities
+* Crafts
+* Discussion Questions
+* Leader Notes (if present)
+
+Normalize all content into the existing lesson flow used by Little Lamb:
+
+* Introduction
+* Bible Story / Learning Section
+* Activity
+* Craft
+* Discussion
+* Closing
+
+If the Builder PDF uses different terminology, convert it into the existing structure instead of creating new lesson types.
+
+Data Quality Requirements:
+
+* Preserve official lesson names.
+* Preserve lesson order from the Builder curriculum.
+* Preserve progression between lessons.
+* Do not create placeholder content if real content exists in the PDF.
+* Use the PDF as the primary source of truth.
+
+Validation Requirements:
+
+After importing:
+
+* Verify all Builder lessons appear in the Lessons tab.
+* Verify Builder appears alongside existing classes.
+* Verify lesson detail screens render correctly.
+* Verify lesson completion tracking works.
+* Verify progress calculations work.
+* Verify no TypeScript errors exist.
+* Verify no existing classes were modified.
+
+Before finalizing, provide a summary showing:
+
+* Number of Builder lessons imported
+* Lesson titles imported
+* Any content that could not be extracted
+* Confirmation that existing curriculum architecture was preserved
+
+Success Criteria:
+
+A leader should be able to open the Builder class and experience it exactly the same way as Little Lamb, with identical functionality, navigation, progress tracking, and lesson structure. Only the curriculum content should be new.
