@@ -1,5 +1,6 @@
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -12,18 +13,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ProgressRing } from "@/components/ProgressRing";
 import { useApp } from "@/context/AppContext";
-import { LESSONS } from "@/data/lessons";
+import { CURRICULUM_CLASSES } from "@/curriculum";
 import { useColors } from "@/hooks/useColors";
-import { ADVENTURER_CLASSES } from "@/types";
-import type { AdventurerClass } from "@/types";
 
-const CLASS_COLORS: Record<AdventurerClass, string> = {
-  "Little Lamb": "#F87171",
-  "Early Bird": "#FB923C",
-  "Busy Bee": "#FBBF24",
-  "Sunbeam": "#34D399",
-  "Builder": "#60A5FA",
-  "Helping Hand": "#A78BFA",
+const CLASS_COLORS: Record<string, string> = {
+  "little-lamb": "#F87171",
+  "early-bird":  "#FB923C",
+  "busy-bee":    "#FBBF24",
+  "sunbeam":     "#34D399",
+  "builder":     "#60A5FA",
+  "helping-hand":"#A78BFA",
 };
 
 export default function LessonsScreen() {
@@ -33,6 +32,22 @@ export default function LessonsScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
   const { lessonCompletions, driveFiles } = useApp();
   const driveCount = (driveFiles ?? []).length;
+
+  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(
+    new Set(["little-lamb"])
+  );
+
+  const toggleClass = (classId: string) => {
+    setExpandedClasses((prev) => {
+      const next = new Set(prev);
+      if (next.has(classId)) {
+        next.delete(classId);
+      } else {
+        next.add(classId);
+      }
+      return next;
+    });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -77,60 +92,156 @@ export default function LessonsScreen() {
 
         <View style={styles.sectionLabel}>
           <Text style={[styles.sectionLabelText, { color: colors.mutedForeground }]}>
-            BUILT-IN LESSONS
+            CURRICULUM
           </Text>
         </View>
 
-        <View style={styles.grid}>
-          {ADVENTURER_CLASSES.map((cls) => {
-            const lesson = LESSONS.find((l) => l.adventurerClass === cls);
-            if (!lesson) return null;
-            const completed = (lessonCompletions[lesson.id] ?? []).length;
-            const total = lesson.sections.length;
-            const progress = total > 0 ? completed / total : 0;
-            const clsColor = CLASS_COLORS[cls];
+        <View style={styles.classList}>
+          {CURRICULUM_CLASSES.map((cls) => {
+            const clsColor = CLASS_COLORS[cls.id] ?? colors.primary;
+            const isExpanded = expandedClasses.has(cls.id);
+
+            const completedLessons = cls.lessons.filter((lesson) => {
+              const done = (lessonCompletions[lesson.id] ?? []).length;
+              return done === lesson.sections.length && lesson.sections.length > 0;
+            }).length;
+            const totalLessons = cls.lessons.length;
+            const classProgress = totalLessons > 0 ? completedLessons / totalLessons : 0;
 
             return (
-              <TouchableOpacity
-                key={cls}
-                style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => router.push(`/lesson/${lesson.id}`)}
-                activeOpacity={0.85}
+              <View
+                key={cls.id}
+                style={[
+                  styles.classGroup,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
               >
-                <View style={styles.cardTop}>
-                  <View style={[styles.classBadge, { backgroundColor: `${clsColor}20` }]}>
-                    <Text style={[styles.classBadgeText, { color: clsColor }]}>{cls}</Text>
+                <TouchableOpacity
+                  style={styles.classHeader}
+                  onPress={() => toggleClass(cls.id)}
+                  activeOpacity={0.85}
+                >
+                  <View
+                    style={[styles.classColorDot, { backgroundColor: clsColor }]}
+                  />
+                  <View style={styles.classHeaderText}>
+                    <Text style={[styles.className, { color: colors.navy }]}>
+                      {cls.name}
+                    </Text>
+                    <Text
+                      style={[styles.classAgeRange, { color: colors.mutedForeground }]}
+                    >
+                      {cls.ageRange} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
+                    </Text>
                   </View>
                   <ProgressRing
-                    size={48}
-                    strokeWidth={5}
-                    progress={progress}
+                    size={40}
+                    strokeWidth={4}
+                    progress={classProgress}
                     color={clsColor}
                     backgroundColor={`${clsColor}30`}
                   />
-                </View>
+                  <Feather
+                    name={isExpanded ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color={colors.mutedForeground}
+                    style={{ marginLeft: 6 }}
+                  />
+                </TouchableOpacity>
 
-                <Text style={[styles.lessonTitle, { color: colors.navy }]}>
-                  {lesson.title}
-                </Text>
-                <Text style={[styles.weekLabel, { color: colors.mutedForeground }]}>
-                  Week {lesson.weekNumber}
-                </Text>
+                {isExpanded && (
+                  <View style={[styles.lessonList, { borderTopColor: colors.border }]}>
+                    {cls.lessons.map((lesson, index) => {
+                      const completedSections = (lessonCompletions[lesson.id] ?? []).length;
+                      const totalSections = lesson.sections.length;
+                      const lessonProgress =
+                        totalSections > 0 ? completedSections / totalSections : 0;
+                      const isComplete =
+                        completedSections === totalSections && totalSections > 0;
 
-                <View style={styles.cardFooter}>
-                  <View style={[styles.progressBg, { backgroundColor: colors.muted }]}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${progress * 100}%`, backgroundColor: clsColor },
-                      ]}
-                    />
+                      return (
+                        <TouchableOpacity
+                          key={lesson.id}
+                          style={[
+                            styles.lessonRow,
+                            {
+                              borderTopWidth: index === 0 ? 0 : 1,
+                              borderTopColor: colors.border,
+                            },
+                          ]}
+                          onPress={() => router.push(`/lesson/${lesson.id}`)}
+                          activeOpacity={0.75}
+                        >
+                          <View
+                            style={[
+                              styles.lessonNumberBadge,
+                              {
+                                backgroundColor: isComplete
+                                  ? clsColor
+                                  : `${clsColor}20`,
+                              },
+                            ]}
+                          >
+                            {isComplete ? (
+                              <Feather name="check" size={13} color="#FFF" />
+                            ) : (
+                              <Text
+                                style={[
+                                  styles.lessonNumber,
+                                  { color: clsColor },
+                                ]}
+                              >
+                                {lesson.weekNumber}
+                              </Text>
+                            )}
+                          </View>
+
+                          <View style={styles.lessonRowText}>
+                            <Text
+                              style={[styles.lessonTitle, { color: colors.navy }]}
+                              numberOfLines={2}
+                            >
+                              {lesson.title}
+                            </Text>
+                            <View style={styles.lessonMeta}>
+                              <View
+                                style={[
+                                  styles.progressBar,
+                                  { backgroundColor: `${clsColor}25` },
+                                ]}
+                              >
+                                <View
+                                  style={[
+                                    styles.progressFill,
+                                    {
+                                      width: `${lessonProgress * 100}%`,
+                                      backgroundColor: clsColor,
+                                    },
+                                  ]}
+                                />
+                              </View>
+                              <Text
+                                style={[
+                                  styles.lessonSectionCount,
+                                  { color: colors.mutedForeground },
+                                ]}
+                              >
+                                {completedSections}/{totalSections}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Feather
+                            name="chevron-right"
+                            size={16}
+                            color={colors.mutedForeground}
+                          />
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                  <Text style={[styles.progressLabel, { color: colors.mutedForeground }]}>
-                    {completed}/{total} sections
-                  </Text>
-                </View>
-              </TouchableOpacity>
+                )}
+              </View>
             );
           })}
         </View>
@@ -172,26 +283,62 @@ const styles = StyleSheet.create({
   driveSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
   driveArrow: { fontSize: 28, fontFamily: "Inter_400Regular", marginLeft: 8 },
   sectionLabel: { paddingHorizontal: 20, marginBottom: 12 },
-  sectionLabelText: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  grid: { paddingHorizontal: 20, gap: 16 },
-  card: {
+  sectionLabelText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1,
+  },
+  classList: { paddingHorizontal: 20, gap: 12 },
+  classGroup: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 20,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
-    gap: 10,
   },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  classBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
-  classBadgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  lessonTitle: { fontSize: 17, fontFamily: "Inter_700Bold", lineHeight: 24 },
-  weekLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  cardFooter: { gap: 6 },
-  progressBg: { height: 6, borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: 6, borderRadius: 3 },
-  progressLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  classHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+  },
+  classColorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  classHeaderText: { flex: 1 },
+  className: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  classAgeRange: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
+  lessonList: { borderTopWidth: 1 },
+  lessonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  lessonNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  lessonNumber: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  lessonRowText: { flex: 1, gap: 6 },
+  lessonTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", lineHeight: 20 },
+  lessonMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  progressFill: { height: 4, borderRadius: 2 },
+  lessonSectionCount: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });
