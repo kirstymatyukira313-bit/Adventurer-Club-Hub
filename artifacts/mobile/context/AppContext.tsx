@@ -9,13 +9,14 @@ import React, {
 
 import { LESSONS } from "@/data/lessons";
 import type {
-  AdventurerClass,
+  AttendanceGuest,
   AttendanceRecord,
   ClubInfo,
   DriveFile,
   Expense,
   LeaderRole,
   Member,
+  SessionType,
 } from "@/types";
 
 const STORAGE_KEY = "adventurer_club_state_v1";
@@ -85,8 +86,16 @@ interface AppContextType extends AppState {
   addMember: (member: Omit<Member, "id" | "hasPaid" | "amountPaid">) => void;
   updateMember: (id: string, updates: Partial<Member>) => void;
   deleteMember: (id: string) => void;
-  saveAttendance: (date: string, records: { memberId: string; present: boolean }[]) => void;
-  getAttendanceForDate: (date: string) => { memberId: string; present: boolean }[];
+  saveAttendance: (
+    date: string,
+    sessionType: SessionType,
+    records: { memberId: string; present: boolean }[],
+    guests: AttendanceGuest[],
+    noSessionReason?: string,
+    noSessionNote?: string,
+  ) => void;
+  getSessionForDate: (date: string) => AttendanceRecord | null;
+  getAttendanceHistory: () => AttendanceRecord[];
   markSectionComplete: (lessonId: string, sectionId: string) => void;
   unmarkSectionComplete: (lessonId: string, sectionId: string) => void;
   markMemberPaid: (memberId: string, paid: boolean) => void;
@@ -194,21 +203,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const saveAttendance = useCallback(
-    (date: string, records: { memberId: string; present: boolean }[]) => {
+    (
+      date: string,
+      sessionType: SessionType,
+      records: { memberId: string; present: boolean }[],
+      guests: AttendanceGuest[],
+      noSessionReason?: string,
+      noSessionNote?: string,
+    ) => {
       const attendance = state.attendance.filter((a) => a.date !== date);
       saveState({
         ...state,
-        attendance: [...attendance, { date, records }],
+        attendance: [
+          ...attendance,
+          { date, sessionType, records, guests, noSessionReason, noSessionNote },
+        ],
       });
     },
     [state]
   );
 
-  const getAttendanceForDate = useCallback(
-    (date: string) => {
+  const getSessionForDate = useCallback(
+    (date: string): AttendanceRecord | null => {
       const record = state.attendance.find((a) => a.date === date);
-      if (record) return record.records;
-      return state.members.map((m) => ({ memberId: m.id, present: true }));
+      if (!record) return null;
+      return {
+        ...record,
+        sessionType: (record.sessionType as SessionType) ?? "Regular Meeting",
+        guests: record.guests ?? [],
+      };
+    },
+    [state]
+  );
+
+  const getAttendanceHistory = useCallback(
+    (): AttendanceRecord[] => {
+      return [...state.attendance]
+        .map((r) => ({
+          ...r,
+          sessionType: (r.sessionType as SessionType) ?? "Regular Meeting",
+          guests: r.guests ?? [],
+        }))
+        .sort((a, b) => b.date.localeCompare(a.date));
     },
     [state]
   );
@@ -334,7 +370,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveState(DEFAULT_STATE);
   }, [state]);
 
-  const _ = LESSONS; // ensure data import is used
+  const _ = LESSONS;
 
   return (
     <AppContext.Provider
@@ -346,7 +382,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateMember,
         deleteMember,
         saveAttendance,
-        getAttendanceForDate,
+        getSessionForDate,
+        getAttendanceHistory,
         markSectionComplete,
         unmarkSectionComplete,
         markMemberPaid,

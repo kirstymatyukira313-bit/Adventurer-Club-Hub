@@ -15,6 +15,30 @@ export const ADVENTURER_CLASSES: AdventurerClass[] = [
   "Helping Hand",
 ];
 
+export type SessionType =
+  | "Regular Meeting"
+  | "Camp"
+  | "Outreach"
+  | "Special Event"
+  | "No Session";
+
+export const SESSION_TYPES: SessionType[] = [
+  "Regular Meeting",
+  "Camp",
+  "Outreach",
+  "Special Event",
+  "No Session",
+];
+
+export const NO_SESSION_REASONS = [
+  "Public Holiday",
+  "Camp Weekend",
+  "Conference Event",
+  "Weather",
+  "Other",
+] as const;
+export type NoSessionReason = (typeof NO_SESSION_REASONS)[number];
+
 export interface Member {
   id: string;
   name: string;
@@ -51,9 +75,18 @@ export interface Lesson {
   weekNumber: number;
 }
 
+export interface AttendanceGuest {
+  id: string;
+  name: string;
+}
+
 export interface AttendanceRecord {
   date: string;
+  sessionType: SessionType;
+  noSessionReason?: string;
+  noSessionNote?: string;
   records: { memberId: string; present: boolean }[];
+  guests: AttendanceGuest[];
 }
 
 export interface Expense {

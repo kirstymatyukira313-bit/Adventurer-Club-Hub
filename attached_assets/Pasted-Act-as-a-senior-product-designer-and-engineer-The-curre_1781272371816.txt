@@ -1,0 +1,114 @@
+Act as a senior product designer and engineer.
+
+The current attendance feature works but lacks support for real-world club operations.
+
+Preserve the existing attendance architecture and mobile-friendly design.
+
+Do not redesign unrelated areas of the application.
+
+==================================================
+OBJECTIVE
+=========
+
+Improve Attendance Management so that leaders can accurately record club activity, including missed weeks, camps, outreach events, and special events.
+
+==================================================
+FEATURE 1: SESSION TYPES
+========================
+
+Before recording attendance, leaders should specify what type of session occurred.
+
+Session Types:
+
+* Regular Meeting
+* Camp
+* Outreach
+* Special Event
+* No Session
+
+If "No Session" is selected:
+
+* Attendance marking should be skipped.
+* Allow optional note/reason.
+* Save the week as "No Session Held".
+
+Examples:
+
+* Public Holiday
+* Camp Weekend
+* Conference Event
+* Weather
+* Other
+
+==================================================
+FEATURE 2: SESSION DATE SELECTION
+=================================
+
+Allow leaders to record attendance for previous weeks.
+
+Requirements:
+
+* Default to current week.
+* Allow selection of previous session dates.
+* Mobile-friendly interface.
+* Fast selection workflow.
+
+Leaders should be able to:
+
+* Record attendance for missed weeks.
+* Update attendance for previous sessions.
+
+==================================================
+FEATURE 3: ATTENDANCE HISTORY
+=============================
+
+Create attendance history.
+
+Display:
+
+* Session Date
+* Session Type
+* Attendance Summary
+
+Example:
+
+13 Jun
+Regular Meeting
+18 / 22 Present
+
+Provide:
+
+* View Session
+* Edit Session
+* Update Attendance
+
+==================================================
+FEATURE 4: GUEST ATTENDANCE
+===========================
+
+Allow leaders to record guests.
+
+Requirements:
+
+* Add Guest button.
+* Capture guest name.
+* Store guest separately from enrolled members.
+* Include guests in attendance history.
+* Do not permanently add guests to club membership.
+
+==================================================
+VALIDATION
+==========
+
+Verify:
+
+* Existing attendance workflow still works.
+* Attendance history works.
+* Session types work.
+* No Session workflow works.
+* Previous-week attendance works.
+* Guest attendance works.
+* Mobile usability remains strong.
+* No TypeScript errors exist.
+
+Provide a summary of all changes after implementation.
