@@ -68,8 +68,8 @@ const DEFAULT_STATE: AppState = {
   members: [],
   lessonCompletions: {},
   attendance: [],
-  subscriptionTarget: 200,
-  subscriptionAmount: 20,
+  subscriptionTarget: 0,
+  subscriptionAmount: 1,
   expenses: [],
   driveFiles: [],
   reminders: DEFAULT_REMINDERS,
@@ -91,9 +91,12 @@ interface AppContextType extends AppState {
   unmarkSectionComplete: (lessonId: string, sectionId: string) => void;
   markMemberPaid: (memberId: string, paid: boolean) => void;
   addExpense: (expense: Omit<Expense, "id">) => void;
+  updateExpense: (id: string, updates: Partial<Omit<Expense, "id">>) => void;
+  deleteExpense: (id: string) => void;
   getTotalCollected: () => number;
   getTotalExpenses: () => number;
   getUnpaidCount: () => number;
+  updateSubscriptionSettings: (amount: number, target: number) => void;
   addDriveFile: (file: Omit<DriveFile, "id" | "addedAt">) => void;
   deleteDriveFile: (id: string) => void;
   updateReminders: (settings: ReminderSettings) => void;
@@ -263,6 +266,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [state]
   );
 
+  const updateExpense = useCallback(
+    (id: string, updates: Partial<Omit<Expense, "id">>) => {
+      const expenses = state.expenses.map((e) =>
+        e.id === id ? { ...e, ...updates } : e
+      );
+      saveState({ ...state, expenses });
+    },
+    [state]
+  );
+
+  const deleteExpense = useCallback(
+    (id: string) => {
+      saveState({ ...state, expenses: state.expenses.filter((e) => e.id !== id) });
+    },
+    [state]
+  );
+
   const getTotalCollected = useCallback(() => {
     return state.members
       .filter((m) => m.hasPaid)
@@ -276,6 +296,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getUnpaidCount = useCallback(() => {
     return state.members.filter((m) => !m.hasPaid).length;
   }, [state]);
+
+  const updateSubscriptionSettings = useCallback(
+    (amount: number, target: number) => {
+      saveState({ ...state, subscriptionAmount: amount, subscriptionTarget: target });
+    },
+    [state]
+  );
 
   const addDriveFile = useCallback(
     (file: Omit<DriveFile, "id" | "addedAt">) => {
@@ -324,9 +351,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         unmarkSectionComplete,
         markMemberPaid,
         addExpense,
+        updateExpense,
+        deleteExpense,
         getTotalCollected,
         getTotalExpenses,
         getUnpaidCount,
+        updateSubscriptionSettings,
         addDriveFile,
         deleteDriveFile,
         updateReminders,

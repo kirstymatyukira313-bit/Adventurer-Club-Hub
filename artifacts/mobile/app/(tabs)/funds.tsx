@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { JarProgress } from "@/components/JarProgress";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import type { Member } from "@/types";
+import type { Expense, Member } from "@/types";
 
 type FundsTab = "All" | "Paid" | "Unpaid";
 
@@ -34,17 +34,48 @@ export default function FundsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const { members, subscriptionTarget, subscriptionAmount, expenses, markMemberPaid, addExpense, getTotalCollected, getTotalExpenses } = useApp();
+  const {
+    members,
+    subscriptionTarget,
+    subscriptionAmount,
+    expenses,
+    markMemberPaid,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    getTotalCollected,
+    getTotalExpenses,
+    updateSubscriptionSettings,
+  } = useApp();
+
   const [activeTab, setActiveTab] = useState<FundsTab>("All");
+
+  // Add expense modal
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenseDate, setExpenseDate] = useState(getTodayDate());
   const [expenseType, setExpenseType] = useState("Supplies");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDesc, setExpenseDesc] = useState("");
 
+  // Edit expense modal
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editType, setEditType] = useState("Supplies");
+  const [editAmount, setEditAmount] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+
+  // Delete confirmation
+  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+
+  // Subscription settings modal
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsAmount, setSettingsAmount] = useState("");
+  const [settingsTarget, setSettingsTarget] = useState("");
+
   const totalCollected = getTotalCollected();
   const totalExpenses = getTotalExpenses();
-  const fundProgress = subscriptionTarget > 0 ? Math.min(1, totalCollected / subscriptionTarget) : 0;
+  const effectiveTarget = subscriptionTarget > 0 ? subscriptionTarget : members.length * subscriptionAmount;
+  const fundProgress = effectiveTarget > 0 ? Math.min(1, totalCollected / effectiveTarget) : 0;
   const fundPercent = Math.round(fundProgress * 100);
   const unpaidCount = members.filter((m) => !m.hasPaid).length;
   const cashInHand = totalCollected - totalExpenses;
@@ -61,6 +92,7 @@ export default function FundsScreen() {
     markMemberPaid(member.id, !member.hasPaid);
   };
 
+  // Add expense
   const handleSaveExpense = () => {
     const amount = parseFloat(expenseAmount);
     if (!amount || amount <= 0) return;
@@ -74,6 +106,59 @@ export default function FundsScreen() {
     setShowExpenseModal(false);
     setExpenseAmount("");
     setExpenseDesc("");
+    setExpenseDate(getTodayDate());
+    setExpenseType("Supplies");
+  };
+
+  // Edit expense
+  const openEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setEditDate(expense.date);
+    setEditType(expense.type);
+    setEditAmount(expense.amount.toString());
+    setEditDesc(expense.description);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingExpense) return;
+    const amount = parseFloat(editAmount);
+    if (!amount || amount <= 0) return;
+    updateExpense(editingExpense.id, {
+      date: editDate,
+      type: editType,
+      amount,
+      description: editDesc.trim(),
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setEditingExpense(null);
+  };
+
+  // Delete expense
+  const handleDeleteConfirm = () => {
+    if (!deletingExpense) return;
+    deleteExpense(deletingExpense.id);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    setDeletingExpense(null);
+  };
+
+  // Subscription settings
+  const openSettings = () => {
+    setSettingsAmount(subscriptionAmount.toString());
+    setSettingsTarget(
+      subscriptionTarget > 0
+        ? subscriptionTarget.toString()
+        : (members.length * subscriptionAmount).toString()
+    );
+    setShowSettingsModal(true);
+  };
+
+  const handleSaveSettings = () => {
+    const amount = parseFloat(settingsAmount);
+    const target = parseFloat(settingsTarget);
+    if (!amount || amount <= 0) return;
+    updateSubscriptionSettings(amount, target > 0 ? target : members.length * amount);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowSettingsModal(false);
   };
 
   return (
@@ -82,8 +167,19 @@ export default function FundsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: bottomPad + 100 }}
       >
+        {/* Header */}
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.navy }]}>Funds</Text>
+          <TouchableOpacity
+            style={[styles.settingsBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+            onPress={openSettings}
+            activeOpacity={0.8}
+          >
+            <Feather name="settings" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.settingsBtnText, { color: colors.mutedForeground }]}>
+              ${subscriptionAmount}/child
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Hero Card */}
@@ -92,7 +188,7 @@ export default function FundsScreen() {
             <View>
               <Text style={styles.heroLabel}>Collected</Text>
               <Text style={styles.heroAmount}>${totalCollected}</Text>
-              <Text style={styles.heroTarget}>of ${subscriptionTarget} target</Text>
+              <Text style={styles.heroTarget}>of ${effectiveTarget} target</Text>
               <View style={[styles.heroBadge, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
                 <Text style={styles.heroBadgeText}>{fundPercent}% complete</Text>
               </View>
@@ -200,10 +296,16 @@ export default function FundsScreen() {
         </View>
 
         {/* Expenses */}
-        {expenses.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.navy }]}>Expenses</Text>
-            {expenses.map((expense) => (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.navy }]}>Expenses</Text>
+          {expenses.length === 0 ? (
+            <View style={styles.emptySection}>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                No expenses recorded yet
+              </Text>
+            </View>
+          ) : (
+            expenses.map((expense) => (
               <View
                 key={expense.id}
                 style={[styles.expenseRow, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -220,13 +322,29 @@ export default function FundsScreen() {
                 <Text style={[styles.expenseAmount, { color: colors.destructive }]}>
                   -${expense.amount}
                 </Text>
+                <View style={styles.expenseActions}>
+                  <TouchableOpacity
+                    style={[styles.expenseActionBtn, { backgroundColor: colors.blueLight }]}
+                    onPress={() => openEditExpense(expense)}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="edit-2" size={14} color={colors.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.expenseActionBtn, { backgroundColor: "#FEE2E2" }]}
+                    onPress={() => setDeletingExpense(expense)}
+                    activeOpacity={0.8}
+                  >
+                    <Feather name="trash-2" size={14} color={colors.destructive} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          )}
+        </View>
       </ScrollView>
 
-      {/* FAB */}
+      {/* Add Expense FAB */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.orange, bottom: bottomPad + 86 }]}
         onPress={() => setShowExpenseModal(true)}
@@ -236,87 +354,26 @@ export default function FundsScreen() {
         <Text style={styles.fabText}>Add Expense</Text>
       </TouchableOpacity>
 
-      {/* Add Expense Modal */}
+      {/* ── Add Expense Modal ── */}
       <Modal visible={showExpenseModal} animationType="slide" transparent>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View
-            style={[
-              styles.modalSheet,
-              { backgroundColor: colors.card, paddingBottom: bottomPad + 24 },
-            ]}
-          >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: bottomPad + 24 }]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: colors.navy }]}>Add Expense</Text>
-
-            <View style={styles.modalForm}>
-              <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
-                  value={expenseDate}
-                  onChangeText={setExpenseDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.mutedForeground}
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Type</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.typeRow}>
-                    {EXPENSE_TYPES.map((t) => (
-                      <TouchableOpacity
-                        key={t}
-                        style={[
-                          styles.typeChip,
-                          {
-                            backgroundColor: expenseType === t ? colors.primary : colors.muted,
-                            borderColor: expenseType === t ? colors.primary : colors.border,
-                          },
-                        ]}
-                        onPress={() => setExpenseType(t)}
-                      >
-                        <Text
-                          style={[
-                            styles.typeChipText,
-                            { color: expenseType === t ? "#FFF" : colors.mutedForeground },
-                          ]}
-                        >
-                          {t}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Amount ($)</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
-                  value={expenseAmount}
-                  onChangeText={setExpenseAmount}
-                  placeholder="0.00"
-                  placeholderTextColor={colors.mutedForeground}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Description</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
-                  value={expenseDesc}
-                  onChangeText={setExpenseDesc}
-                  placeholder="Optional notes..."
-                  placeholderTextColor={colors.mutedForeground}
-                />
-              </View>
-            </View>
-
+            <ExpenseForm
+              date={expenseDate}
+              type={expenseType}
+              amount={expenseAmount}
+              desc={expenseDesc}
+              onDateChange={setExpenseDate}
+              onTypeChange={setExpenseType}
+              onAmountChange={setExpenseAmount}
+              onDescChange={setExpenseDesc}
+              colors={colors}
+            />
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.cancelBtn, { borderColor: colors.border }]}
@@ -335,13 +392,226 @@ export default function FundsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* ── Edit Expense Modal ── */}
+      <Modal visible={!!editingExpense} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: bottomPad + 24 }]}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: colors.navy }]}>Edit Expense</Text>
+            <ExpenseForm
+              date={editDate}
+              type={editType}
+              amount={editAmount}
+              desc={editDesc}
+              onDateChange={setEditDate}
+              onTypeChange={setEditType}
+              onAmountChange={setEditAmount}
+              onDescChange={setEditDesc}
+              colors={colors}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.cancelBtn, { borderColor: colors.border }]}
+                onPress={() => setEditingExpense(null)}
+              >
+                <Text style={[styles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSaveEdit}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.saveBtnText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Delete Confirmation Modal ── */}
+      <Modal visible={!!deletingExpense} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmCard, { backgroundColor: colors.card }]}>
+            <View style={[styles.confirmIcon, { backgroundColor: "#FEE2E2" }]}>
+              <Feather name="trash-2" size={24} color={colors.destructive} />
+            </View>
+            <Text style={[styles.confirmTitle, { color: colors.navy }]}>Delete Expense?</Text>
+            <Text style={[styles.confirmText, { color: colors.mutedForeground }]}>
+              {deletingExpense
+                ? `Delete "${deletingExpense.type}" of $${deletingExpense.amount}? This cannot be undone.`
+                : ""}
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.cancelBtn, { borderColor: colors.border }]}
+                onPress={() => setDeletingExpense(null)}
+              >
+                <Text style={[styles.cancelText, { color: colors.navy }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: colors.destructive }]}
+                onPress={handleDeleteConfirm}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.saveBtnText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Subscription Settings Modal ── */}
+      <Modal visible={showSettingsModal} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: bottomPad + 24 }]}>
+            <View style={styles.modalHandle} />
+            <View style={styles.settingsHeader}>
+              <View style={[styles.settingsIconWrap, { backgroundColor: colors.blueLight }]}>
+                <Feather name="settings" size={20} color={colors.primary} />
+              </View>
+              <Text style={[styles.modalTitle, { color: colors.navy, marginBottom: 0 }]}>
+                Subscription Settings
+              </Text>
+            </View>
+            <Text style={[styles.settingsHint, { color: colors.mutedForeground }]}>
+              Set the subscription fee per child and your club's collection target.
+            </Text>
+            <View style={styles.modalForm}>
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+                  Amount Per Child ($)
+                </Text>
+                <TextInput
+                  style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
+                  value={settingsAmount}
+                  onChangeText={setSettingsAmount}
+                  placeholder="e.g. 20"
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <View style={styles.field}>
+                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+                  Collection Target ($)
+                </Text>
+                <TextInput
+                  style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
+                  value={settingsTarget}
+                  onChangeText={setSettingsTarget}
+                  placeholder={`e.g. ${members.length * (parseFloat(settingsAmount) || subscriptionAmount)}`}
+                  placeholderTextColor={colors.mutedForeground}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+            <View style={[styles.modalActions, { marginTop: 20 }]}>
+              <TouchableOpacity
+                style={[styles.cancelBtn, { borderColor: colors.border }]}
+                onPress={() => setShowSettingsModal(false)}
+              >
+                <Text style={[styles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+                onPress={handleSaveSettings}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.saveBtnText}>Save Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
+  );
+}
+
+interface ExpenseFormProps {
+  date: string;
+  type: string;
+  amount: string;
+  desc: string;
+  onDateChange: (v: string) => void;
+  onTypeChange: (v: string) => void;
+  onAmountChange: (v: string) => void;
+  onDescChange: (v: string) => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}
+
+function ExpenseForm({ date, type, amount, desc, onDateChange, onTypeChange, onAmountChange, onDescChange, colors }: ExpenseFormProps) {
+  return (
+    <View style={styles.modalForm}>
+      <View style={styles.field}>
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Date</Text>
+        <TextInput
+          style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
+          value={date}
+          onChangeText={onDateChange}
+          placeholder="YYYY-MM-DD"
+          placeholderTextColor={colors.mutedForeground}
+        />
+      </View>
+      <View style={styles.field}>
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Type</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.typeRow}>
+            {EXPENSE_TYPES.map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[
+                  styles.typeChip,
+                  {
+                    backgroundColor: type === t ? colors.primary : colors.muted,
+                    borderColor: type === t ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => onTypeChange(t)}
+              >
+                <Text style={[styles.typeChipText, { color: type === t ? "#FFF" : colors.mutedForeground }]}>
+                  {t}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+      <View style={styles.field}>
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Amount ($)</Text>
+        <TextInput
+          style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
+          value={amount}
+          onChangeText={onAmountChange}
+          placeholder="0.00"
+          placeholderTextColor={colors.mutedForeground}
+          keyboardType="decimal-pad"
+        />
+      </View>
+      <View style={styles.field}>
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Description</Text>
+        <TextInput
+          style={[styles.input, { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input }]}
+          value={desc}
+          onChangeText={onDescChange}
+          placeholder="Optional notes..."
+          placeholderTextColor={colors.mutedForeground}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: { paddingHorizontal: 20, marginBottom: 16 },
+  headerRow: { paddingHorizontal: 20, marginBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { fontSize: 28, fontFamily: "Inter_700Bold" },
+  settingsBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  settingsBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   heroCard: {
     marginHorizontal: 20,
     borderRadius: 24,
@@ -395,6 +665,8 @@ const styles = StyleSheet.create({
   expenseType: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   expenseDesc: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
   expenseAmount: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  expenseActions: { flexDirection: "row", gap: 8 },
+  expenseActionBtn: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   fab: {
     position: "absolute",
     right: 20,
@@ -427,4 +699,12 @@ const styles = StyleSheet.create({
   cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   saveBtn: { flex: 2, paddingVertical: 16, borderRadius: 14, alignItems: "center" },
   saveBtnText: { color: "#FFF", fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  confirmOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 24 },
+  confirmCard: { borderRadius: 24, padding: 28, width: "100%", alignItems: "center", gap: 12 },
+  confirmIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
+  confirmTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  confirmText: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
+  settingsHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 8 },
+  settingsIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  settingsHint: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, marginBottom: 20 },
 });

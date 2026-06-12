@@ -1,0 +1,124 @@
+Before making any changes, audit the current implementation of:
+
+* Bottom Navigation
+* Funds Management
+* Expense Tracking
+* Subscription Calculations
+
+The application is currently stable and functioning.
+
+IMPORTANT:
+
+Preserve existing architecture, navigation structure, lesson system, attendance system, and curriculum content.
+
+Do NOT redesign unrelated screens.
+
+Do NOT refactor working code unless necessary.
+
+==================================================
+TASK 1: MOBILE NAVIGATION FIX
+=============================
+
+Issue:
+
+On mobile devices the bottom navigation is partially cut off.
+
+Requirements:
+
+* Ensure bottom navigation is fully visible on common mobile screen sizes.
+* Test responsive behavior.
+* Respect device safe areas.
+* Prevent clipping, overflow, and hidden navigation items.
+* Preserve existing visual design.
+
+Success Criteria:
+
+All navigation items remain fully visible and tappable on mobile devices.
+
+==================================================
+TASK 2: EXPENSE MANAGEMENT IMPROVEMENTS
+=======================================
+
+Issue:
+
+Expense cards cannot be edited or deleted after creation.
+
+Requirements:
+
+For every expense record:
+
+* Add Edit functionality.
+* Add Delete functionality.
+* Add confirmation modal before deletion.
+
+Edit Flow:
+
+Expense Card
+→ Edit
+→ Update Details
+→ Save
+
+Delete Flow:
+
+Expense Card
+→ Delete
+→ Confirmation Modal
+→ Delete Expense
+
+Success Criteria:
+
+Users can safely correct mistakes without creating duplicate expenses.
+
+==================================================
+TASK 3: CONFIGURABLE SUBSCRIPTION AMOUNT
+========================================
+
+Issue:
+
+Subscription calculations are currently fixed at $20 per child.
+
+Requirements:
+
+Create Club Settings capability allowing leaders to define:
+
+Subscription Amount Per Child
+
+Default Value:
+
+$1
+
+All subscription calculations should derive from this configurable value.
+
+Update:
+
+* Funds dashboard
+* Progress calculations
+* Outstanding balances
+* Collection summaries
+
+Success Criteria:
+
+Changing subscription amount updates all financial calculations correctly.
+
+==================================================
+VALIDATION
+==========
+
+After implementation:
+
+* Verify no TypeScript errors exist.
+* Verify no runtime errors exist.
+* Verify mobile responsiveness.
+* Verify expense edit/delete works.
+* Verify subscription calculations update correctly.
+* Verify existing curriculum remains intact.
+* Verify attendance remains intact.
+* Verify profile remains intact.
+
+Provide a summary of:
+
+1. Changes made
+2. Files modified
+3. Issues discovered
+4. Issues fixed
+5. Any remaining concerns
