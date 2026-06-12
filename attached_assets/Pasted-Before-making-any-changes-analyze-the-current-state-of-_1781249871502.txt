@@ -1,0 +1,177 @@
+Before making any changes, analyze the current state of the application.
+
+Current Status:
+
+* Little Lamb curriculum successfully imported.
+* Builder curriculum successfully imported.
+* Existing lesson architecture is working.
+* Existing navigation is working.
+* Existing progress tracking is working.
+* Existing lesson detail screens are working.
+
+IMPORTANT:
+
+The current architecture is considered stable and should be preserved.
+
+Do NOT:
+
+* redesign screens
+* refactor curriculum architecture
+* replace lesson rendering logic
+* change navigation patterns
+* rename existing data structures
+* rewrite working components
+* introduce new UI systems
+* alter onboarding flow
+* alter attendance flow
+* alter funds flow
+
+Your primary task is to import the attached Helping Hand curriculum using the exact same implementation approach already used for Little Lamb and Builder.
+
+==================================================
+PHASE 1: IMPORT HELPING HAND CURRICULUM
+=======================================
+
+Study the existing curriculum structure.
+
+Reuse:
+
+* existing schema
+* existing interfaces
+* existing lesson hierarchy
+* existing progress tracking
+* existing lesson completion logic
+
+For each Helping Hand lesson extract:
+
+* Lesson Title
+* Main Objective
+* Memory Verse
+* Key Learning Outcome
+* Materials Needed
+* Activities
+* Crafts
+* Discussion Questions
+* Leader Notes (if present)
+
+Map all content into the existing lesson flow:
+
+* Introduction
+* Bible Story / Learning Section
+* Activity
+* Craft
+* Discussion
+* Closing
+
+Preserve official lesson names and sequence.
+
+Do not generate placeholder content when real content exists in the PDF.
+
+==================================================
+PHASE 2: APPLICATION HEALTH CHECK
+=================================
+
+After Helping Hand is imported:
+
+Perform a complete application audit.
+
+Check:
+
+Curriculum
+
+* missing lesson data
+* broken lesson references
+* invalid lesson IDs
+* duplicate lesson IDs
+* missing memory verses
+* missing lesson sections
+
+Navigation
+
+* broken routes
+* dead-end screens
+* unreachable screens
+* missing back navigation
+
+Lessons
+
+* lesson detail rendering
+* lesson completion tracking
+* lesson progress calculations
+* lesson accordion behavior
+
+Attendance
+
+* attendance tracking
+* attendance save actions
+* attendance calculations
+
+Funds
+
+* subscription calculations
+* expense calculations
+* progress indicators
+
+Profile
+
+* broken actions
+* missing screens
+* broken links
+
+Data
+
+* TypeScript errors
+* runtime errors
+* console errors
+* import/export issues
+
+==================================================
+PHASE 3: SAFE BUG FIXING
+========================
+
+Fix ONLY issues that are confirmed by the audit.
+
+Do not perform speculative refactors.
+
+Do not rewrite working code.
+
+Preserve the current architecture wherever possible.
+
+Only fix:
+
+* actual bugs
+* actual TypeScript errors
+* actual broken navigation
+* actual rendering issues
+* actual data inconsistencies
+
+==================================================
+FINAL VALIDATION
+================
+
+Before completion verify:
+
+* Little Lamb still works
+* Builder still works
+* Helping Hand works
+* Lessons tab works
+* Lesson detail screens work
+* Progress tracking works
+* Completion tracking works
+* Attendance works
+* Funds works
+* Profile works
+* No TypeScript errors exist
+
+Provide a final report showing:
+
+1. Number of Helping Hand lessons imported
+2. Lesson titles imported
+3. Bugs discovered
+4. Bugs fixed
+5. Remaining issues (if any)
+6. Confirmation that the application remains stable
+
+Success Criteria:
+
+A real Adventurer Club leader should be able to onboard, navigate the app, access Little Lamb, Builder, and Helping Hand lessons, track attendance, manage subscriptions, and use the application without encountering broken functionality.
