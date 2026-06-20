@@ -1,0 +1,180 @@
+Before making any changes, fully analyze the existing codebase and curriculum architecture.
+
+PROJECT CONTEXT
+
+This Adventurer Club Management application already contains curriculum content for:
+
+* Little Lamb
+* Builder
+* Helping Hand
+* Early Bird
+
+These classes are already functioning correctly and represent the official curriculum implementation standard for the application.
+
+IMPORTANT:
+
+Before importing any content, study how the existing classes are implemented.
+
+Pay close attention to:
+
+* curriculum data structure
+* lesson hierarchy
+* lesson IDs
+* lesson rendering
+* lesson detail screens
+* progress tracking
+* completion tracking
+* lesson navigation
+* curriculum organization
+
+The existing implementation is considered correct and should be preserved.
+
+DO NOT:
+
+* redesign screens
+* modify navigation
+* change lesson layouts
+* alter lesson rendering logic
+* modify progress tracking
+* modify completion tracking
+* refactor curriculum architecture
+* rename interfaces
+* modify existing curriculum content
+
+==================================================
+OBJECTIVE
+=========
+
+Import the attached Sunbeam Activity Book into the existing curriculum system.
+
+The goal is to make Sunbeam feel like it has always been part of the application.
+
+A leader should experience Sunbeam exactly the same way as:
+
+* Little Lamb
+* Builder
+* Helping Hand
+* Early Bird
+
+==================================================
+CONTENT EXTRACTION
+==================
+
+Extract and preserve all meaningful curriculum content from the Sunbeam Activity Book.
+
+For every lesson capture:
+
+* Lesson Title
+* Main Objective
+* Memory Verse
+* Key Learning Outcome
+* Materials Needed
+* Activities
+* Crafts
+* Discussion Questions
+* Leader Notes
+* Scripture References
+* Teaching Instructions
+
+Preserve official lesson names and official lesson sequence.
+
+Use real curriculum content wherever available.
+
+Do not generate placeholder content.
+
+==================================================
+LESSON STRUCTURE
+================
+
+Map all Sunbeam content into the same lesson structure already used by the other classes.
+
+Normalize content into:
+
+* Introduction
+* Bible Story / Learning Section
+* Activity
+* Craft
+* Discussion
+* Closing
+
+If the PDF uses different terminology, adapt it into the existing lesson structure rather than creating new structures.
+
+Consistency is the priority.
+
+==================================================
+INTEGRATION
+===========
+
+Integrate Sunbeam into:
+
+* Lessons screen
+* Curriculum list
+* Lesson detail screens
+* Progress tracking
+* Completion tracking
+* Curriculum navigation
+
+Sunbeam should automatically inherit all existing lesson functionality.
+
+Do not modify UI components.
+
+Only add curriculum content.
+
+==================================================
+CURRICULUM CONSISTENCY CHECK
+============================
+
+After import, compare Sunbeam against:
+
+* Little Lamb
+* Builder
+* Helping Hand
+* Early Bird
+
+Verify consistency in:
+
+* lesson formatting
+* lesson structure
+* progress behavior
+* completion behavior
+* navigation behavior
+
+==================================================
+VALIDATION
+==========
+
+Verify:
+
+✓ Little Lamb still works
+✓ Builder still works
+✓ Helping Hand still works
+✓ Early Bird still works
+✓ Sunbeam works
+
+✓ Lessons screen loads correctly
+✓ Lesson detail screens load correctly
+✓ Progress tracking works
+✓ Completion tracking works
+
+✓ No TypeScript errors exist
+✓ No runtime errors exist
+
+==================================================
+FINAL REPORT
+============
+
+Provide:
+
+1. Number of Sunbeam lessons imported
+2. Lesson titles imported
+3. Files modified
+4. Any content that could not be extracted
+5. Any issues discovered
+6. Any issues fixed
+7. Confirmation that the existing curriculum architecture was preserved
+
+IMPORTANT:
+
+After completing the Sunbeam import, stop and wait for review.
+
+Do not make any UI improvements, redesigns, refactors, or additional feature changes.
