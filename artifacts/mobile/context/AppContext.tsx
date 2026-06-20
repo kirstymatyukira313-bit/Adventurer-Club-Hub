@@ -105,6 +105,7 @@ interface AppContextType extends AppState {
   getTotalCollected: () => number;
   getTotalExpenses: () => number;
   getUnpaidCount: () => number;
+  updateClub: (updates: Partial<ClubInfo>) => void;
   updateSubscriptionSettings: (amount: number, target: number) => void;
   addDriveFile: (file: Omit<DriveFile, "id" | "addedAt">) => void;
   deleteDriveFile: (id: string) => void;
@@ -333,6 +334,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return state.members.filter((m) => !m.hasPaid).length;
   }, [state]);
 
+  const updateClub = useCallback(
+    (updates: Partial<ClubInfo>) => {
+      saveState({ ...state, club: { ...state.club, ...updates } });
+    },
+    [state]
+  );
+
   const updateSubscriptionSettings = useCallback(
     (amount: number, target: number) => {
       saveState({ ...state, subscriptionAmount: amount, subscriptionTarget: target });
@@ -393,6 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         getTotalCollected,
         getTotalExpenses,
         getUnpaidCount,
+        updateClub,
         updateSubscriptionSettings,
         addDriveFile,
         deleteDriveFile,

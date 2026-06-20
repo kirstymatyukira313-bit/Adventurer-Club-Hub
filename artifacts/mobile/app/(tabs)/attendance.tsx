@@ -54,6 +54,13 @@ function generateGuestId(): string {
   return "g-" + Date.now().toString() + Math.random().toString(36).substr(2, 5);
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
 const SESSION_TYPE_META: Record<SessionType, { icon: keyof typeof Feather.glyphMap; color: string; bg: string }> = {
   "Regular Meeting": { icon: "calendar", color: "#2563EB", bg: "#EFF6FF" },
   "Camp": { icon: "sunset", color: "#16A34A", bg: "#F0FDF4" },
@@ -71,10 +78,8 @@ export default function AttendanceScreen() {
   const { members, saveAttendance, getSessionForDate, getAttendanceHistory } = useApp();
   const today = getTodayDate();
 
-  // Tab
   const [activeTab, setActiveTab] = useState<AttendanceTab>("record");
 
-  // Record tab state
   const [selectedDate, setSelectedDate] = useState(today);
   const [sessionType, setSessionType] = useState<SessionType>("Regular Meeting");
   const [noSessionReason, setNoSessionReason] = useState<NoSessionReason | "">("");
@@ -83,29 +88,73 @@ export default function AttendanceScreen() {
   const [guests, setGuests] = useState<AttendanceGuest[]>([]);
   const [saved, setSaved] = useState(false);
 
-  // Guest modal
   const [showAddGuest, setShowAddGuest] = useState(false);
   const [guestName, setGuestName] = useState("");
 
-  // View session modal
   const [viewingSession, setViewingSession] = useState<AttendanceRecord | null>(null);
 
-  // Week date options (last 8 weeks, 7 days apart)
-  const weekOptions = useMemo(() => {
-    const opts: { date: string; label: string; sub: string }[] = [];
-    const base = new Date();
-    for (let i = 0; i < 8; i++) {
-      const d = new Date(base);
-      d.setDate(d.getDate() - i * 7);
-      const dateStr = d.toISOString().split("T")[0] ?? "";
-      opts.push({
-        date: dateStr,
-        label: i === 0 ? "Today" : formatShortDate(dateStr),
-        sub: i === 0 ? formatShortDate(dateStr) : d.toLocaleDateString("en-US", { weekday: "short" }),
-      });
-    }
-    return opts;
-  }, []);
+  // Date picker modal
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const todayObj = new Date(today + "T12:00:00");
+  const [calYear, setCalYear] = useState(todayObj.getFullYear());
+  const [calMonth, setCalMonth] = useState(todayObj.getMonth());
+
+  // Session type dropdown modal
+  const [showSessionDropdown, setShowSessionDropdown] = useState(false);
+
+  // Build calendar grid for the currently displayed month
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const cells: (number | null)[] = Array(firstDay).fill(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [calYear, calMonth]);
+
+  function calDateStr(day: number): string {
+    return `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+
+  function isFutureDay(day: number): boolean {
+    const d = new Date(calYear, calMonth, day);
+    const t = new Date(today + "T12:00:00");
+    return d > t;
+  }
+
+  function prevMonth() {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); }
+    else setCalMonth(m => m - 1);
+  }
+
+  function nextMonth() {
+    const now = new Date();
+    const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth();
+    if (isCurrentMonth) return;
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0); }
+    else setCalMonth(m => m + 1);
+  }
+
+  const isCurrentCalMonth = useMemo(() => {
+    const now = new Date();
+    return calYear === now.getFullYear() && calMonth === now.getMonth();
+  }, [calYear, calMonth]);
+
+  function openDatePicker() {
+    const d = new Date(selectedDate + "T12:00:00");
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+    setShowDatePicker(true);
+  }
+
+  function selectDay(day: number) {
+    if (isFutureDay(day)) return;
+    const ds = calDateStr(day);
+    setSelectedDate(ds);
+    setSaved(false);
+    setShowDatePicker(false);
+    Haptics.selectionAsync();
+  }
 
   // Load session data when selected date changes
   useEffect(() => {
@@ -173,6 +222,10 @@ export default function AttendanceScreen() {
   const meta = SESSION_TYPE_META[sessionType];
   const history = getAttendanceHistory();
 
+  const isToday = selectedDate === today;
+  const dateLabel = isToday ? "Today" : formatShortDate(selectedDate);
+  const hasSavedForDate = !!getSessionForDate(selectedDate);
+
   const renderMember = ({ item }: { item: Member }) => {
     const isPresent = presentMap[item.id] !== false;
     return (
@@ -239,77 +292,53 @@ export default function AttendanceScreen() {
           contentContainerStyle={{ paddingBottom: bottomPad + 110 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Date Selector */}
-          <View style={styles.section}>
+          {/* Date Dropdown */}
+          <View style={[styles.section, { marginTop: 8 }]}>
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Session Date</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateScroll}>
-              {weekOptions.map((opt) => {
-                const isSelected = opt.date === selectedDate;
-                const hasSaved = !!getSessionForDate(opt.date);
-                return (
-                  <TouchableOpacity
-                    key={opt.date}
-                    style={[
-                      styles.dateChip,
-                      {
-                        backgroundColor: isSelected ? colors.navy : colors.card,
-                        borderColor: isSelected ? colors.navy : colors.border,
-                      },
-                    ]}
-                    onPress={() => setSelectedDate(opt.date)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.dateChipLabel, { color: isSelected ? "#FFF" : colors.navy }]}>
-                      {opt.label}
-                    </Text>
-                    <Text style={[styles.dateChipSub, { color: isSelected ? "rgba(255,255,255,0.7)" : colors.mutedForeground }]}>
-                      {opt.sub}
-                    </Text>
-                    {hasSaved && (
-                      <View style={[styles.savedDot, { backgroundColor: isSelected ? "#FFF" : colors.success }]} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            <Text style={[styles.selectedDateLabel, { color: colors.mutedForeground }]}>
-              {formatDisplayDate(selectedDate)}
-            </Text>
+            <TouchableOpacity
+              style={[styles.dropdownBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={openDatePicker}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.dropdownIconBox, { backgroundColor: colors.blueLight }]}>
+                <Feather name="calendar" size={16} color={colors.primary} />
+              </View>
+              <View style={styles.dropdownMeta}>
+                <Text style={[styles.dropdownPrimary, { color: colors.navy }]}>
+                  {dateLabel}
+                </Text>
+                <Text style={[styles.dropdownSub, { color: colors.mutedForeground }]}>
+                  {formatDisplayDate(selectedDate)}
+                </Text>
+              </View>
+              <View style={styles.dropdownRight}>
+                {hasSavedForDate && (
+                  <View style={[styles.savedPill, { backgroundColor: colors.successLight }]}>
+                    <Feather name="check" size={10} color={colors.success} />
+                    <Text style={[styles.savedPillText, { color: colors.success }]}>Saved</Text>
+                  </View>
+                )}
+                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
+              </View>
+            </TouchableOpacity>
           </View>
 
-          {/* Session Type */}
+          {/* Session Type Dropdown */}
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Session Type</Text>
-            <View style={styles.sessionTypeGrid}>
-              {SESSION_TYPES.map((type) => {
-                const m = SESSION_TYPE_META[type];
-                const isActive = sessionType === type;
-                return (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.sessionTypeChip,
-                      {
-                        backgroundColor: isActive ? m.bg : colors.card,
-                        borderColor: isActive ? m.color : colors.border,
-                      },
-                    ]}
-                    onPress={() => { setSessionType(type); setSaved(false); }}
-                    activeOpacity={0.8}
-                  >
-                    <Feather name={m.icon} size={14} color={isActive ? m.color : colors.mutedForeground} />
-                    <Text
-                      style={[
-                        styles.sessionTypeText,
-                        { color: isActive ? m.color : colors.mutedForeground },
-                      ]}
-                    >
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <TouchableOpacity
+              style={[styles.dropdownBtn, { backgroundColor: meta.bg, borderColor: meta.color }]}
+              onPress={() => setShowSessionDropdown(true)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.dropdownIconBox, { backgroundColor: meta.color + "20" }]}>
+                <Feather name={meta.icon} size={16} color={meta.color} />
+              </View>
+              <View style={styles.dropdownMeta}>
+                <Text style={[styles.dropdownPrimary, { color: meta.color }]}>{sessionType}</Text>
+              </View>
+              <Feather name="chevron-down" size={18} color={meta.color} />
+            </TouchableOpacity>
           </View>
 
           {/* ── No Session Flow ── */}
@@ -544,6 +573,146 @@ export default function AttendanceScreen() {
         </View>
       )}
 
+      {/* ── Calendar Modal ── */}
+      <Modal visible={showDatePicker} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.calendarSheet, { backgroundColor: colors.card }]}
+            onPress={() => {}}
+          >
+            {/* Month nav */}
+            <View style={styles.calHeader}>
+              <TouchableOpacity onPress={prevMonth} style={styles.calNavBtn}>
+                <Feather name="chevron-left" size={20} color={colors.navy} />
+              </TouchableOpacity>
+              <Text style={[styles.calMonthTitle, { color: colors.navy }]}>
+                {MONTH_NAMES[calMonth]} {calYear}
+              </Text>
+              <TouchableOpacity
+                onPress={nextMonth}
+                style={[styles.calNavBtn, isCurrentCalMonth && { opacity: 0.3 }]}
+                disabled={isCurrentCalMonth}
+              >
+                <Feather name="chevron-right" size={20} color={colors.navy} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Day labels */}
+            <View style={styles.calDayRow}>
+              {DAY_NAMES.map((d) => (
+                <Text key={d} style={[styles.calDayLabel, { color: colors.mutedForeground }]}>{d}</Text>
+              ))}
+            </View>
+
+            {/* Calendar grid */}
+            <View style={styles.calGrid}>
+              {calendarDays.map((day, idx) => {
+                if (!day) return <View key={`empty-${idx}`} style={styles.calCell} />;
+                const ds = calDateStr(day);
+                const isSelected = ds === selectedDate;
+                const isToday2 = ds === today;
+                const future = isFutureDay(day);
+                const hasSaved2 = !!getSessionForDate(ds);
+                return (
+                  <TouchableOpacity
+                    key={ds}
+                    style={[
+                      styles.calCell,
+                      isSelected && { backgroundColor: colors.navy, borderRadius: 22 },
+                      !isSelected && isToday2 && { borderRadius: 22, borderWidth: 1.5, borderColor: colors.primary },
+                      future && { opacity: 0.25 },
+                    ]}
+                    onPress={() => selectDay(day)}
+                    disabled={future}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.calDayNum,
+                      { color: isSelected ? "#FFF" : future ? colors.mutedForeground : colors.navy },
+                      isToday2 && !isSelected && { color: colors.primary, fontFamily: "Inter_700Bold" },
+                    ]}>
+                      {day}
+                    </Text>
+                    {hasSaved2 && !isSelected && (
+                      <View style={[styles.calDot, { backgroundColor: colors.success }]} />
+                    )}
+                    {hasSaved2 && isSelected && (
+                      <View style={[styles.calDot, { backgroundColor: "#FFF" }]} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.calTodayBtn, { borderColor: colors.border }]}
+              onPress={() => {
+                setSelectedDate(today);
+                setSaved(false);
+                setShowDatePicker(false);
+              }}
+            >
+              <Text style={[styles.calTodayText, { color: colors.primary }]}>Jump to Today</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Session Type Dropdown Modal ── */}
+      <Modal visible={showSessionDropdown} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSessionDropdown(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.sessionSheet, { backgroundColor: colors.card }]}
+            onPress={() => {}}
+          >
+            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.sheetTitle, { color: colors.navy }]}>Session Type</Text>
+
+            {SESSION_TYPES.map((type) => {
+              const m = SESSION_TYPE_META[type];
+              const isActive = sessionType === type;
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.sessionOption,
+                    {
+                      backgroundColor: isActive ? m.bg : colors.background,
+                      borderColor: isActive ? m.color : colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setSessionType(type);
+                    setSaved(false);
+                    setShowSessionDropdown(false);
+                    Haptics.selectionAsync();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.sessionOptionIcon, { backgroundColor: m.color + "20" }]}>
+                    <Feather name={m.icon} size={18} color={m.color} />
+                  </View>
+                  <Text style={[styles.sessionOptionText, { color: isActive ? m.color : colors.navy }]}>
+                    {type}
+                  </Text>
+                  {isActive && <Feather name="check" size={18} color={m.color} />}
+                </TouchableOpacity>
+              );
+            })}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ── Add Guest Modal ── */}
       <Modal visible={showAddGuest} transparent animationType="fade">
         <KeyboardAvoidingView
@@ -558,7 +727,7 @@ export default function AttendanceScreen() {
             <TextInput
               style={[
                 styles.guestInput,
-                { borderColor: colors.border, color: colors.navy, backgroundColor: colors.input },
+                { borderColor: colors.border, color: colors.navy, backgroundColor: colors.background },
               ]}
               value={guestName}
               onChangeText={setGuestName}
@@ -572,7 +741,7 @@ export default function AttendanceScreen() {
                 style={[styles.guestCancelBtn, { borderColor: colors.border }]}
                 onPress={() => { setShowAddGuest(false); setGuestName(""); }}
               >
-                <Text style={[styles.guestCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+                <Text style={[styles.guestCancelText, { color: colors.navy }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.guestAddBtn, { backgroundColor: colors.primary }]}
@@ -586,129 +755,127 @@ export default function AttendanceScreen() {
       </Modal>
 
       {/* ── View Session Modal ── */}
-      <Modal visible={!!viewingSession} animationType="slide" transparent>
-        {viewingSession && (
-          <View style={styles.viewOverlay}>
-            <View style={[styles.viewSheet, { backgroundColor: colors.background, paddingBottom: bottomPad + 16 }]}>
-              {/* Header */}
-              <View style={[styles.viewHeader, { backgroundColor: SESSION_TYPE_META[viewingSession.sessionType ?? "Regular Meeting"].bg }]}>
-                <TouchableOpacity style={styles.viewCloseBtn} onPress={() => setViewingSession(null)}>
-                  <Feather name="x" size={20} color={colors.navy} />
-                </TouchableOpacity>
-                <View style={[styles.viewTypePill, { backgroundColor: SESSION_TYPE_META[viewingSession.sessionType ?? "Regular Meeting"].color }]}>
-                  <Feather
-                    name={SESSION_TYPE_META[viewingSession.sessionType ?? "Regular Meeting"].icon}
-                    size={13}
-                    color="#FFF"
-                  />
-                  <Text style={styles.viewTypePillText}>{viewingSession.sessionType}</Text>
-                </View>
-                <Text style={[styles.viewDate, { color: colors.navy }]}>
-                  {formatDisplayDate(viewingSession.date)}
-                </Text>
-                {viewingSession.sessionType !== "No Session" && (
-                  <Text style={[styles.viewSummary, { color: colors.mutedForeground }]}>
-                    {viewingSession.records.filter((r) => r.present).length} of {viewingSession.records.length} members present
-                    {viewingSession.guests.length > 0 ? ` · ${viewingSession.guests.length} guest${viewingSession.guests.length !== 1 ? "s" : ""}` : ""}
-                  </Text>
-                )}
-              </View>
-
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
-                {viewingSession.sessionType === "No Session" ? (
-                  <View style={[styles.noSessionInfo, { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" }]}>
-                    <Feather name="x-circle" size={24} color="#6B7280" />
-                    <Text style={[styles.noSessionInfoTitle, { color: "#374151" }]}>No Session Held</Text>
-                    {viewingSession.noSessionReason ? (
-                      <Text style={[styles.noSessionInfoReason, { color: "#6B7280" }]}>{viewingSession.noSessionReason}</Text>
-                    ) : null}
-                    {viewingSession.noSessionNote ? (
-                      <Text style={[styles.noSessionInfoNote, { color: "#4B5563" }]}>{viewingSession.noSessionNote}</Text>
-                    ) : null}
+      <Modal visible={!!viewingSession} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.viewOverlay}
+          activeOpacity={1}
+          onPress={() => setViewingSession(null)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            {viewingSession && (() => {
+              const m = SESSION_TYPE_META[viewingSession.sessionType ?? "Regular Meeting"];
+              const presentMembers = members.filter((mb) =>
+                viewingSession.records.find((r) => r.memberId === mb.id && r.present)
+              );
+              const absentMembers = members.filter((mb) =>
+                viewingSession.records.find((r) => r.memberId === mb.id && !r.present)
+              );
+              return (
+                <View style={[styles.viewSheet, { backgroundColor: colors.background }]}>
+                  <View style={[styles.viewHeader, { backgroundColor: m.bg }]}>
+                    <TouchableOpacity style={styles.viewCloseBtn} onPress={() => setViewingSession(null)}>
+                      <Feather name="x" size={22} color={m.color} />
+                    </TouchableOpacity>
+                    <View style={[styles.viewTypePill, { backgroundColor: m.color }]}>
+                      <Feather name={m.icon} size={13} color="#FFF" />
+                      <Text style={styles.viewTypePillText}>{viewingSession.sessionType}</Text>
+                    </View>
+                    <Text style={[styles.viewDate, { color: colors.navy }]}>
+                      {formatDisplayDate(viewingSession.date)}
+                    </Text>
+                    {viewingSession.sessionType !== "No Session" && (
+                      <Text style={[styles.viewSummary, { color: colors.mutedForeground }]}>
+                        {presentMembers.length} present · {absentMembers.length} absent
+                        {viewingSession.guests.length > 0 ? ` · ${viewingSession.guests.length} guest${viewingSession.guests.length !== 1 ? "s" : ""}` : ""}
+                      </Text>
+                    )}
                   </View>
-                ) : (
-                  <>
-                    {/* Present Members */}
-                    {viewingSession.records.filter((r) => r.present).length > 0 && (
-                      <View style={{ marginBottom: 20 }}>
-                        <Text style={[styles.viewGroupLabel, { color: colors.success }]}>
-                          Present ({viewingSession.records.filter((r) => r.present).length})
-                        </Text>
-                        {viewingSession.records
-                          .filter((r) => r.present)
-                          .map((r) => {
-                            const member = members.find((m) => m.id === r.memberId);
-                            if (!member) return null;
-                            return (
-                              <View key={r.memberId} style={[styles.viewMemberRow, { backgroundColor: colors.successLight }]}>
+
+                  <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+                    {viewingSession.sessionType === "No Session" ? (
+                      <View style={[styles.noSessionInfo, { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" }]}>
+                        <Feather name="x-circle" size={32} color="#6B7280" />
+                        <Text style={[styles.noSessionInfoTitle, { color: colors.navy }]}>No Session Held</Text>
+                        {viewingSession.noSessionReason && (
+                          <Text style={[styles.noSessionInfoReason, { color: "#6B7280" }]}>
+                            Reason: {viewingSession.noSessionReason}
+                          </Text>
+                        )}
+                        {viewingSession.noSessionNote && (
+                          <Text style={[styles.noSessionInfoNote, { color: colors.mutedForeground }]}>
+                            {viewingSession.noSessionNote}
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <>
+                        {presentMembers.length > 0 && (
+                          <View style={{ marginBottom: 20 }}>
+                            <Text style={[styles.viewGroupLabel, { color: colors.success }]}>
+                              Present ({presentMembers.length})
+                            </Text>
+                            {presentMembers.map((mb) => (
+                              <View key={mb.id} style={[styles.viewMemberRow, { backgroundColor: colors.successLight }]}>
                                 <View style={[styles.viewAvatar, { backgroundColor: colors.success }]}>
-                                  <Text style={styles.viewAvatarText}>{member.name.charAt(0).toUpperCase()}</Text>
+                                  <Text style={styles.viewAvatarText}>{mb.name.charAt(0).toUpperCase()}</Text>
                                 </View>
-                                <Text style={[styles.viewMemberName, { color: colors.navy }]}>{member.name}</Text>
-                                <Feather name="check-circle" size={16} color={colors.success} />
+                                <Text style={[styles.viewMemberName, { color: colors.navy }]}>{mb.name}</Text>
+                                <Feather name="check" size={16} color={colors.success} />
                               </View>
-                            );
-                          })}
-                      </View>
-                    )}
-
-                    {/* Absent Members */}
-                    {viewingSession.records.filter((r) => !r.present).length > 0 && (
-                      <View style={{ marginBottom: 20 }}>
-                        <Text style={[styles.viewGroupLabel, { color: colors.destructive }]}>
-                          Absent ({viewingSession.records.filter((r) => !r.present).length})
-                        </Text>
-                        {viewingSession.records
-                          .filter((r) => !r.present)
-                          .map((r) => {
-                            const member = members.find((m) => m.id === r.memberId);
-                            if (!member) return null;
-                            return (
-                              <View key={r.memberId} style={[styles.viewMemberRow, { backgroundColor: "#FEE2E2" }]}>
-                                <View style={[styles.viewAvatar, { backgroundColor: colors.destructive }]}>
-                                  <Text style={styles.viewAvatarText}>{member.name.charAt(0).toUpperCase()}</Text>
-                                </View>
-                                <Text style={[styles.viewMemberName, { color: colors.navy }]}>{member.name}</Text>
-                                <Feather name="x-circle" size={16} color={colors.destructive} />
-                              </View>
-                            );
-                          })}
-                      </View>
-                    )}
-
-                    {/* Guests */}
-                    {viewingSession.guests.length > 0 && (
-                      <View style={{ marginBottom: 20 }}>
-                        <Text style={[styles.viewGroupLabel, { color: "#7C3AED" }]}>
-                          Guests ({viewingSession.guests.length})
-                        </Text>
-                        {viewingSession.guests.map((g) => (
-                          <View key={g.id} style={[styles.viewMemberRow, { backgroundColor: "#F5F3FF" }]}>
-                            <View style={[styles.viewAvatar, { backgroundColor: "#7C3AED" }]}>
-                              <Text style={styles.viewAvatarText}>{g.name.charAt(0).toUpperCase()}</Text>
-                            </View>
-                            <Text style={[styles.viewMemberName, { color: colors.navy }]}>{g.name}</Text>
-                            <Feather name="user-plus" size={16} color="#7C3AED" />
+                            ))}
                           </View>
-                        ))}
-                      </View>
+                        )}
+                        {absentMembers.length > 0 && (
+                          <View style={{ marginBottom: 20 }}>
+                            <Text style={[styles.viewGroupLabel, { color: colors.destructive }]}>
+                              Absent ({absentMembers.length})
+                            </Text>
+                            {absentMembers.map((mb) => (
+                              <View key={mb.id} style={[styles.viewMemberRow, { backgroundColor: "#FEE2E2" }]}>
+                                <View style={[styles.viewAvatar, { backgroundColor: colors.destructive }]}>
+                                  <Text style={styles.viewAvatarText}>{mb.name.charAt(0).toUpperCase()}</Text>
+                                </View>
+                                <Text style={[styles.viewMemberName, { color: colors.navy }]}>{mb.name}</Text>
+                                <Feather name="x" size={16} color={colors.destructive} />
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        {viewingSession.guests.length > 0 && (
+                          <View style={{ marginBottom: 20 }}>
+                            <Text style={[styles.viewGroupLabel, { color: "#7C3AED" }]}>
+                              Guests ({viewingSession.guests.length})
+                            </Text>
+                            {viewingSession.guests.map((g) => (
+                              <View key={g.id} style={[styles.viewMemberRow, { backgroundColor: "#F5F3FF" }]}>
+                                <View style={[styles.viewAvatar, { backgroundColor: "#7C3AED" }]}>
+                                  <Text style={styles.viewAvatarText}>{g.name.charAt(0).toUpperCase()}</Text>
+                                </View>
+                                <Text style={[styles.viewMemberName, { color: colors.navy }]}>{g.name}</Text>
+                                <Feather name="user-plus" size={16} color="#7C3AED" />
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </>
                     )}
-                  </>
-                )}
-              </ScrollView>
 
-              <View style={{ paddingHorizontal: 20 }}>
-                <TouchableOpacity
-                  style={[styles.editFromViewBtn, { backgroundColor: colors.navy }]}
-                  onPress={() => { setViewingSession(null); handleEditSession(viewingSession); }}
-                >
-                  <Feather name="edit-2" size={16} color="#FFF" />
-                  <Text style={styles.editFromViewText}>Edit This Session</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
+                    <TouchableOpacity
+                      style={[styles.editFromViewBtn, { backgroundColor: colors.navy }]}
+                      onPress={() => {
+                        setViewingSession(null);
+                        handleEditSession(viewingSession);
+                      }}
+                    >
+                      <Feather name="edit-2" size={16} color="#FFF" />
+                      <Text style={styles.editFromViewText}>Edit This Session</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              );
+            })()}
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -721,36 +888,26 @@ const styles = StyleSheet.create({
   tab: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10, borderRadius: 10, gap: 6 },
   tabText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
-  section: { paddingHorizontal: 20, marginBottom: 4 },
-  sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
+  section: { paddingHorizontal: 20, marginBottom: 12 },
+  sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 },
 
-  dateScroll: { paddingRight: 20, gap: 10 },
-  dateChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: "center",
-    minWidth: 76,
-    position: "relative",
-  },
-  dateChipLabel: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  dateChipSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
-  savedDot: { width: 6, height: 6, borderRadius: 3, position: "absolute", top: 6, right: 6 },
-  selectedDateLabel: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 10, marginBottom: 16 },
-
-  sessionTypeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
-  sessionTypeChip: {
+  // Dropdown button (date + session type)
+  dropdownBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
     borderWidth: 1.5,
-    width: "47%",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
   },
-  sessionTypeText: { fontSize: 13, fontFamily: "Inter_600SemiBold", flexShrink: 1 },
+  dropdownIconBox: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  dropdownMeta: { flex: 1 },
+  dropdownPrimary: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  dropdownSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  dropdownRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  savedPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  savedPillText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   reasonRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
   reasonChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
@@ -782,14 +939,7 @@ const styles = StyleSheet.create({
   summaryNum: { fontSize: 22, fontFamily: "Inter_700Bold" },
   summaryLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
 
-  memberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 14,
-    gap: 14,
-  },
+  memberRow: { flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1.5, padding: 14, gap: 14 },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   memberInfo: { flex: 1 },
@@ -799,63 +949,21 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   guestList: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
-  guestChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-  },
+  guestChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
   guestName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  addGuestBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    alignSelf: "flex-start",
-    marginBottom: 16,
-  },
+  addGuestBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderStyle: "dashed", alignSelf: "flex-start", marginBottom: 16 },
   addGuestText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingTop: 60 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", paddingHorizontal: 40 },
 
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  saveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    borderRadius: 16,
-    gap: 10,
-  },
+  footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, position: "absolute", bottom: 0, left: 0, right: 0 },
+  saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: 16, gap: 10 },
   saveBtnText: { color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
 
   // History
-  historyCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 10,
-    gap: 14,
-  },
+  historyCard: { flexDirection: "row", alignItems: "center", borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 10, gap: 14 },
   historyDateBadge: { borderRadius: 12, padding: 10, alignItems: "center", minWidth: 48 },
   historyDay: { color: "#FFF", fontSize: 20, fontFamily: "Inter_700Bold", lineHeight: 24 },
   historyMonth: { color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: "Inter_500Medium" },
@@ -866,6 +974,29 @@ const styles = StyleSheet.create({
   historyCount: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   historyActions: { flexDirection: "column", gap: 6 },
   historyBtn: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+
+  // Calendar modal
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 },
+  calendarSheet: { borderRadius: 24, padding: 20, width: "100%" },
+  calHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  calNavBtn: { padding: 8 },
+  calMonthTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  calDayRow: { flexDirection: "row", marginBottom: 8 },
+  calDayLabel: { flex: 1, textAlign: "center", fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  calGrid: { flexDirection: "row", flexWrap: "wrap" },
+  calCell: { width: "14.28%", aspectRatio: 1, alignItems: "center", justifyContent: "center" },
+  calDayNum: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  calDot: { width: 4, height: 4, borderRadius: 2, marginTop: 2 },
+  calTodayBtn: { marginTop: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, alignItems: "center" },
+  calTodayText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+
+  // Session type dropdown sheet
+  sessionSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 40, position: "absolute", bottom: 0, left: 0, right: 0, gap: 10 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 12 },
+  sheetTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  sessionOption: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderRadius: 14, borderWidth: 1.5 },
+  sessionOptionIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  sessionOptionText: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold" },
 
   // Add Guest Modal
   guestOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 24 },
@@ -889,14 +1020,7 @@ const styles = StyleSheet.create({
   viewDate: { fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 4 },
   viewSummary: { fontSize: 14, fontFamily: "Inter_400Regular" },
   viewGroupLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
-  viewMemberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
+  viewMemberRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, marginBottom: 8 },
   viewAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   viewAvatarText: { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold" },
   viewMemberName: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold" },

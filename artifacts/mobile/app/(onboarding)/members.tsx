@@ -126,7 +126,7 @@ export default function MembersScreen() {
 
         <Text style={[styles.title, { color: colors.navy }]}>Add Club Members</Text>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Quickly add your first club members. You can always add more later.
+          Add your first members now or skip this — you can add them anytime from the Profile tab.
         </Text>
 
         {members.map((member, index) => (
@@ -231,15 +231,15 @@ export default function MembersScreen() {
           { paddingBottom: bottomPad + 16, backgroundColor: "#FEFFFE", borderTopColor: colors.border },
         ]}
       >
-        <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip For Now</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.cta, { backgroundColor: colors.primary }]}
           onPress={handleFinish}
           activeOpacity={0.85}
         >
           <Text style={styles.ctaText}>Finish Setup</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.skipBtn, { borderColor: colors.border }]} onPress={handleSkip}>
+          <Text style={[styles.skipText, { color: colors.mutedForeground }]}>Skip for now — add members later</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     right: 0,
     gap: 10,
   },
-  skipBtn: { alignItems: "center", paddingVertical: 4 },
+  skipBtn: { alignItems: "center", paddingVertical: 14, borderRadius: 16, borderWidth: 1.5 },
   skipText: { fontSize: 15, fontFamily: "Inter_500Medium" },
   cta: { paddingVertical: 18, borderRadius: 16, alignItems: "center" },
   ctaText: { color: "#FFF", fontSize: 17, fontFamily: "Inter_600SemiBold" },

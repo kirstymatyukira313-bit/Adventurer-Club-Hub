@@ -1,0 +1,95 @@
+Act as a senior UX engineer.
+
+The application is approaching usability testing and several friction points have been identified during internal testing.
+
+Preserve existing architecture and functionality.
+
+Do not redesign unrelated screens.
+
+==================================================
+ATTENDANCE SCREEN IMPROVEMENTS
+==============================
+
+The current attendance screen feels visually cluttered.
+
+Replace session type tabs with a dropdown selector.
+
+Session Types:
+
+* Regular Meeting
+* Camp
+* Outreach
+* Special Event
+* No Session
+
+Requirements:
+
+* Mobile-friendly dropdown
+* Current selection visible
+* Clean and compact layout
+
+==================================================
+SESSION DATE IMPROVEMENT
+========================
+
+Replace the current date presentation with a dropdown-style date selector.
+
+Default:
+
+Current session date.
+
+When tapped:
+
+Open a calendar modal.
+
+Requirements:
+
+* Allow selecting previous dates
+* Maintain mobile usability
+* Preserve attendance history functionality
+
+==================================================
+PROFILE EDITING
+===============
+
+Leaders must be able to edit onboarding information after setup.
+
+Allow editing:
+
+* Leader Name
+* Leader Role
+* Church Name
+* Club Name
+
+Add an Edit Details flow from Profile.
+
+Changes should update throughout the application.
+
+==================================================
+ONBOARDING IMPROVEMENT
+======================
+
+The Add Members step is frequently skipped.
+
+Review onboarding and recommend the best UX approach.
+
+Preferred direction:
+
+* Allow users to finish onboarding without adding members.
+* Encourage member creation later through dashboard empty states.
+
+Do not implement major onboarding redesigns without first evaluating the existing flow.
+
+==================================================
+VALIDATION
+==========
+
+Verify:
+
+* Attendance remains functional
+* Attendance history remains functional
+* Profile updates persist correctly
+* Existing curriculum content remains intact
+* Mobile usability improves
+
+Provide a summary of all changes made and any recommendations discovered during implementation.
