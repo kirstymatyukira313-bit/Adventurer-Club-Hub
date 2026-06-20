@@ -1,0 +1,119 @@
+Before making any changes, analyze the existing curriculum implementation currently used by:
+
+* Little Lamb
+* Builder
+* Helping Hand
+
+IMPORTANT:
+
+These three classes are now considered the official reference implementation for the Adventurer curriculum system.
+
+Do NOT:
+
+* redesign screens
+* modify lesson layouts
+* change lesson rendering logic
+* alter progress tracking
+* alter completion tracking
+* refactor curriculum architecture
+* change navigation
+* modify existing lesson data
+* rename interfaces or data structures
+
+==================================================
+OBJECTIVE
+=========
+
+Import the attached Early Bird Activity Book into the existing curriculum system using the exact same structure already established by the other classes.
+
+The goal is consistency.
+
+A leader should not be able to tell that Early Bird was imported separately.
+
+==================================================
+CONTENT EXTRACTION
+==================
+
+Extract and preserve:
+
+* Lesson Title
+* Main Objective
+* Memory Verse
+* Key Learning Outcome
+* Materials Needed
+* Activities
+* Crafts
+* Discussion Questions
+* Leader Notes
+* Any curriculum-specific instructions
+
+Preserve official lesson names and lesson sequence.
+
+Do not create placeholder content when real content exists in the PDF.
+
+==================================================
+LESSON STRUCTURE
+================
+
+Map all content into the existing lesson model already used by:
+
+* Little Lamb
+* Builder
+* Helping Hand
+
+Normalize content into:
+
+* Introduction
+* Bible Story / Learning Section
+* Activity
+* Craft
+* Discussion
+* Closing
+
+If the PDF uses different terminology, adapt it into the existing lesson structure instead of creating new structures.
+
+==================================================
+INTEGRATION
+===========
+
+Connect Early Bird to:
+
+* existing Lessons screen
+* existing lesson detail screens
+* existing progress tracking
+* existing completion tracking
+* existing curriculum navigation
+
+Do not modify any UI components.
+
+Only add curriculum content.
+
+==================================================
+VALIDATION
+==========
+
+After importing:
+
+* Verify all Early Bird lessons appear correctly.
+* Verify lesson detail screens render properly.
+* Verify progress calculations work.
+* Verify completion tracking works.
+* Verify no duplicate IDs exist.
+* Verify no TypeScript errors exist.
+* Verify Little Lamb, Builder, and Helping Hand remain unchanged.
+
+==================================================
+FINAL REPORT
+============
+
+Provide:
+
+1. Number of lessons imported
+2. Lesson titles imported
+3. Any content that could not be extracted
+4. Files modified
+5. Confirmation that the existing curriculum architecture was preserved
+
+Success Criteria:
+
+Early Bird should behave identically to Little Lamb, Builder, and Helping Hand, with no architectural or UI changes and only new curriculum content added.
