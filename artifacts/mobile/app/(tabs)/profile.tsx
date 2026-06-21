@@ -122,7 +122,7 @@ export default function ProfileScreen() {
           label: "Additional Resources",
           sublabel: "Curriculum resources & activity materials",
           onPress: () =>
-            Linking.openURL("https://drive.google.com").catch(() =>
+            Linking.openURL("https://drive.google.com/drive/folders/1uTa-dNRbadeqA5dKIC29DcPptO9tbwt0?usp=drive_link").catch(() =>
               Alert.alert("Error", "Could not open resources link.")
             ),
         },
