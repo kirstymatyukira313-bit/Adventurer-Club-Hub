@@ -97,7 +97,7 @@ export interface Expense {
   description: string;
 }
 
-export type LeaderRole = "Club Leader" | "Deputy Leader";
+export type LeaderRole = "Club Leader" | "Deputy Leader" | "Other";
 
 export interface ClubInfo {
   name: string;

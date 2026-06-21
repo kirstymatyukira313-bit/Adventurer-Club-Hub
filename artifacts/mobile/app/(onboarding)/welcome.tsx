@@ -54,18 +54,15 @@ export default function WelcomeScreen() {
       <View style={styles.bottom}>
         <TouchableOpacity
           style={[styles.cta, { backgroundColor: colors.primary }]}
-          onPress={() => router.push("/(onboarding)/role")}
+          onPress={() => router.push("/(onboarding)/setup")}
           activeOpacity={0.85}
         >
           <Text style={styles.ctaText}>Set Up My Club</Text>
         </TouchableOpacity>
 
         <View style={styles.dots}>
-          <View style={[styles.dot, styles.dotActive, { backgroundColor: colors.primary }]} />
-          <View style={[styles.dot, { backgroundColor: colors.border }]} />
-          <View style={[styles.dot, { backgroundColor: colors.border }]} />
-          <View style={[styles.dot, { backgroundColor: colors.border }]} />
-          <View style={[styles.dot, { backgroundColor: colors.border }]} />
+          <View style={[styles.progressBar, { backgroundColor: colors.primary }]} />
+          <View style={[styles.progressBar, { backgroundColor: colors.border }]} />
         </View>
       </View>
     </View>
@@ -136,15 +133,11 @@ const styles = StyleSheet.create({
   },
   dots: {
     flexDirection: "row",
-    justifyContent: "center",
     gap: 8,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  dotActive: {
-    width: 24,
+  progressBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
   },
 });

@@ -320,7 +320,7 @@ export default function ProfileScreen() {
                     <View style={styles.editField}>
                       <Text style={[styles.editLabel, { color: colors.navy }]}>Role</Text>
                       <View style={styles.roleToggle}>
-                        {(["Club Leader", "Deputy Leader"] as LeaderRole[]).map((r) => (
+                        {(["Club Leader", "Deputy Leader", "Other"] as LeaderRole[]).map((r) => (
                           <TouchableOpacity
                             key={r}
                             style={[
