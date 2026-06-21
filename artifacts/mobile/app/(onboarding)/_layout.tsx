@@ -7,7 +7,6 @@ export default function OnboardingLayout() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="role" />
       <Stack.Screen name="setup" />
-      <Stack.Screen name="members" />
       <Stack.Screen name="success" />
     </Stack>
   );

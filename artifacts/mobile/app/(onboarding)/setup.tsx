@@ -33,7 +33,7 @@ export default function SetupScreen() {
   const handleContinue = () => {
     if (!isValid) return;
     router.push({
-      pathname: "/(onboarding)/members",
+      pathname: "/(onboarding)/success",
       params: {
         role: role ?? "Club Leader",
         churchName: churchName.trim(),
