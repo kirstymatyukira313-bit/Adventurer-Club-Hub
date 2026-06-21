@@ -166,3 +166,5 @@ overrides:
   js-yaml: "^4.2.0"
   # Security: fix @babel/core vulnerability (GHSA-4x5r-pxfx-6jf8)
   "@babel/core": "^7.29.6"
+  # Ensure @babel/generator is available for react-native-worklets Babel plugin
+  "@babel/generator": "^7.29.0"
