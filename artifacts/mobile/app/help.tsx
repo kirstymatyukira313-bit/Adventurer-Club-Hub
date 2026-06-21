@@ -50,7 +50,7 @@ export default function HelpScreen() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const openWhatsApp = () => {
-    const url = "https://wa.me/27714653455?text=Hi%2C%20I%20need%20help%20with%20Adventurer%20Club%20Manager";
+    const url = "https://wa.me/263714653455?text=Hi%2C%20I%20need%20help%20with%20Adventurer%20Club%20Manager";
     Linking.openURL(url).catch(() => Alert.alert("Error", "Could not open WhatsApp"));
   };
 
