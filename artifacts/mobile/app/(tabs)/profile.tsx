@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -98,12 +99,6 @@ export default function ProfileScreen() {
           onPress: () => {},
           future: true,
         },
-        {
-          icon: "calendar",
-          label: "Curriculum Planning",
-          sublabel: "Manage lesson sequences",
-          onPress: () => router.push("/curriculum"),
-        },
       ],
     },
     {
@@ -122,6 +117,15 @@ export default function ProfileScreen() {
     {
       title: "Reports & Support",
       items: [
+        {
+          icon: "folder",
+          label: "Additional Resources",
+          sublabel: "Curriculum resources & activity materials",
+          onPress: () =>
+            Linking.openURL("https://drive.google.com").catch(() =>
+              Alert.alert("Error", "Could not open resources link.")
+            ),
+        },
         {
           icon: "download",
           label: "Export Reports",

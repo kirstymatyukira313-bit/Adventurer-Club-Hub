@@ -1,0 +1,381 @@
+# PILOT READINESS REFINEMENT PASS v1.0
+
+Act as a senior frontend engineer and product designer with 15+ years of experience building production-grade web and mobile applications.
+
+You are working on an Adventurer Club Management platform that is already functional and nearing real-world usability testing.
+
+Your role is to make targeted refinements only.
+
+Improve usability and information architecture based on findings from internal testing.
+
+The application is already working.
+
+Do NOT redesign.
+
+Do NOT refactor.
+
+Do NOT introduce new design systems.
+
+Do NOT create new navigation patterns.
+
+Do NOT modify working curriculum functionality.
+
+Only implement the requested refinements.
+
+Preserve:
+
+* Existing visual design
+* Existing color palette
+* Existing typography
+* Existing spacing system
+* Existing card styles
+* Existing lesson architecture
+* Existing curriculum structure
+* Existing attendance functionality
+* Existing funds functionality
+* Existing profile functionality
+* Existing mobile responsiveness
+* Existing navigation behavior
+
+Do NOT:
+
+* redesign screens
+* move existing features unless explicitly requested
+* alter lesson rendering
+* alter curriculum content
+* refactor working code
+* rename files unnecessarily
+* introduce new dependencies
+
+==================================================
+
+1. PROFILE EXPERIENCE OPTIMIZATION
+   ==================================================
+
+Issue:
+
+The Profile screen currently contains a Curriculum Planning card that is no longer relevant.
+
+Required Change:
+
+Remove the Curriculum Planning card entirely.
+
+Requirements:
+
+* Remove only this card.
+* Preserve all other Profile cards.
+* Preserve existing spacing and hierarchy.
+* Do not alter surrounding functionality.
+
+Expected Outcome:
+
+A cleaner Profile screen with only relevant actions.
+
+==================================================
+
+2. INTELLIGENT HOME SCREEN PERSONALISATION
+   ==================================================
+   Issue:
+
+New users are shown a "Continue Today's Lesson" card even when they have never started a lesson.
+
+Required Change:
+
+Make the Home screen context-aware.
+
+If no lesson progress exists:
+
+Display:
+
+Ready to Begin?
+
+Select a class and start your first lesson.
+
+[Browse Lessons]
+
+If lesson progress exists:
+
+Continue displaying the existing Continue Lesson experience.
+
+Requirements:
+
+* Preserve existing card styling.
+* Change only the display logic.
+* No UI redesign.
+
+Expected Outcome:
+
+Home screen content reflects actual user progress.
+
+==================================================
+
+3. LESSON EXPERIENCE SIMPLIFICATION
+   ==================================================
+   Issue:
+
+The Lessons screen currently includes a Google Drive Files section that distracts from lesson delivery.
+
+Required Change:
+
+Remove the Google Drive Files section from the Lessons screen.
+
+Requirements:
+
+* Remove only this section.
+* Preserve all lesson functionality.
+* Preserve lesson cards.
+* Preserve lesson progress tracking.
+
+Expected Outcome:
+
+Lessons screen focuses entirely on curriculum delivery.
+
+==================================================
+
+4. ADDITIONAL RESOURCES HUB 
+   ==================================================
+   Issue:
+
+Supplementary resources need a dedicated location.
+
+Required Change:
+
+Create a new Profile card named:
+
+Additional Resources
+
+Description:
+
+Access curriculum resources, activity materials, and supporting documents.
+
+Action:
+
+Open Resources
+
+I will provide the Google Drive URL separately.
+
+Requirements:
+
+* Follow existing Profile card styling.
+* Follow existing card hierarchy.
+* Do not introduce a new layout pattern.
+
+Expected Outcome:
+
+Resources become available without cluttering the lesson experience.
+
+==================================================
+
+5. MULTI-CLASS LESSON NAVIGATION
+   ==================================================
+   Issue:
+
+Switching between classes requires unnecessary navigation.
+
+Required Change:
+
+Add class filters at the top of the Lessons screen.
+
+Classes:
+
+* Little Lamb
+* Early Bird
+* Sunbeam
+* Builder
+* Helping Hand
+
+Requirements:
+
+* Horizontal scrollable filters
+* Mobile friendly
+* Preserve existing lesson cards
+* Preserve lesson functionality
+* Preserve lesson detail screens
+
+Do NOT redesign the screen.
+
+Only add class-switching functionality.
+
+Expected Outcome:
+
+Leaders can switch between classes quickly and efficiently.
+
+==================================================
+
+6. NAVIGATION TERMINOLOGY UPDATE
+   ==================================================
+   Issue:
+
+The navigation label "Attend" does not accurately describe the feature.
+
+Required Change:
+
+Rename:
+
+Attend
+
+to
+
+Register
+
+Requirements:
+
+* Label change only
+* Preserve route
+* Preserve icon
+* Preserve functionality
+
+Expected Outcome:
+
+Navigation terminology better reflects user tasks.
+
+==================================================
+
+7. SUPPORT AND CONTACT EXPERIENCE
+   ==================================================
+   Issue:
+
+Users need clear ways to contact support.
+
+Required Change:
+
+Update Help & Support.
+
+Display:
+
+Email:
+[support.clubmanager@gmail.com](mailto:support.clubmanager@gmail.com)
+
+WhatsApp:
+0714653455
+
+Actions:
+
+* Send Email
+* WhatsApp Chat
+
+Use:
+
+mailto[.clubmanager@gmail.com](mailto:.clubmanager@gmail.com)
+
+and
+
+WhatsApp deep linking where supported.
+
+Requirements:
+
+* Follow existing design patterns.
+* No new layouts.
+* No redesign.
+
+Expected Outcome:
+
+Users can easily contact support and provide feedback.
+
+==================================================
+
+8. HISTORICAL INSIGHTS ON DASHBOARD 
+   ==================================================
+   Issue:
+
+Leaders cannot quickly review previous attendance and subscription snapshots.
+
+Required Change:
+
+Enhance:
+
+* Attendance Snapshot Card
+* Subscription Snapshot Card
+
+Add lightweight navigation controls:
+
+< Previous
+Next >
+
+Attendance Example:
+
+Week 4
+18 / 20 Present
+
+Subscriptions Example:
+
+June 2026
+$18 Collected
+
+Requirements:
+
+* Preserve existing card design.
+* Preserve existing dashboard layout.
+* No charts.
+* No analytics dashboards.
+* No redesign.
+
+Expected Outcome:
+
+Leaders can browse historical summaries without leaving Home.
+
+==================================================
+
+9. FINAL QUALITY ASSUARANCE 
+   ==================================================
+   After implementation:
+
+Verify:
+
+✓ Little Lamb works
+
+✓ Early Bird works
+
+✓ Sunbeam works
+
+✓ Builder works
+
+✓ Helping Hand works
+
+✓ Lesson progress works
+
+✓ Lesson completion works
+
+✓ Attendance works
+
+✓ Attendance history works
+
+✓ Funds work
+
+✓ Profile editing works
+
+✓ Navigation works
+
+✓ Mobile responsiveness remains intact
+
+✓ No TypeScript errors
+
+✓ No runtime errors
+
+✓ No broken routes
+
+✓ No dead-end screens
+
+Provide:
+
+1. Files modified
+2. Changes implemented
+3. Any issues discovered
+4. Any issues fixed
+5. Any recommendations before usability testing
+
+IMPORTANT:
+
+After implementing these changes:
+
+STOP.
+
+Do not perform any additional redesigns.
+
+Do not refactor working systems.
+
+Do not make aesthetic improvements.
+
+Do not introduce new features.
+
+This is a controlled pilot-readiness refinement pass only.

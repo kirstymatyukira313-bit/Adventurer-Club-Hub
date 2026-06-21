@@ -16,6 +16,15 @@ import { useApp } from "@/context/AppContext";
 import { CURRICULUM_CLASSES } from "@/curriculum";
 import { useColors } from "@/hooks/useColors";
 
+const CLASS_FILTER_LABELS: Record<string, string> = {
+  "little-lamb":  "Little Lamb",
+  "early-bird":   "Early Bird",
+  "busy-bee":     "Busy Bee",
+  "sunbeam":      "Sunbeam",
+  "builder":      "Builder",
+  "helping-hand": "Helping Hand",
+};
+
 const CLASS_COLORS: Record<string, string> = {
   "little-lamb": "#F87171",
   "early-bird":  "#FB923C",
@@ -30,12 +39,16 @@ export default function LessonsScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const { lessonCompletions, driveFiles } = useApp();
-  const driveCount = (driveFiles ?? []).length;
+  const { lessonCompletions } = useApp();
 
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(
     new Set(["little-lamb"])
   );
+
+  const displayedClasses = selectedClassId
+    ? CURRICULUM_CLASSES.filter((c) => c.id === selectedClassId)
+    : CURRICULUM_CLASSES;
 
   const toggleClass = (classId: string) => {
     setExpandedClasses((prev) => {
@@ -62,33 +75,56 @@ export default function LessonsScreen() {
           <View>
             <Text style={[styles.title, { color: colors.navy }]}>Lessons</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              All classes
+              {selectedClassId ? (CLASS_FILTER_LABELS[selectedClassId] ?? "Class") : "All classes"}
             </Text>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.driveCard, { backgroundColor: "#35A7FF12", borderColor: "#35A7FF40" }]}
-          onPress={() => router.push("/drive-files")}
-          activeOpacity={0.85}
+        {/* Class filter chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+          style={styles.filterScroll}
         >
-          <View style={styles.driveCardLeft}>
-            <View style={[styles.driveIconBox, { backgroundColor: "#35A7FF20" }]}>
-              <Text style={styles.driveIcon}>📁</Text>
-            </View>
-            <View>
-              <Text style={[styles.driveTitle, { color: "#0B132B" }]}>
-                Google Drive Files
-              </Text>
-              <Text style={[styles.driveSubtitle, { color: "#35A7FF" }]}>
-                {driveCount > 0
-                  ? `${driveCount} file${driveCount !== 1 ? "s" : ""} linked`
-                  : "Add your PDF lesson materials"}
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.driveArrow, { color: "#35A7FF" }]}>›</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              selectedClassId === null && { backgroundColor: colors.navy, borderColor: colors.navy },
+              selectedClassId !== null && { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+            onPress={() => setSelectedClassId(null)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.filterChipText, { color: selectedClassId === null ? "#FFF" : colors.mutedForeground }]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          {CURRICULUM_CLASSES.map((cls) => {
+            const clsColor = CLASS_COLORS[cls.id] ?? colors.primary;
+            const isActive = selectedClassId === cls.id;
+            return (
+              <TouchableOpacity
+                key={cls.id}
+                style={[
+                  styles.filterChip,
+                  isActive
+                    ? { backgroundColor: clsColor, borderColor: clsColor }
+                    : { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+                onPress={() => {
+                  setSelectedClassId(cls.id);
+                  setExpandedClasses(new Set([cls.id]));
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterChipText, { color: isActive ? "#FFF" : colors.mutedForeground }]}>
+                  {CLASS_FILTER_LABELS[cls.id] ?? cls.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         <View style={styles.sectionLabel}>
           <Text style={[styles.sectionLabelText, { color: colors.mutedForeground }]}>
@@ -97,7 +133,7 @@ export default function LessonsScreen() {
         </View>
 
         <View style={styles.classList}>
-          {CURRICULUM_CLASSES.map((cls) => {
+          {displayedClasses.map((cls) => {
             const clsColor = CLASS_COLORS[cls.id] ?? colors.primary;
             const isExpanded = expandedClasses.has(cls.id);
 
@@ -260,28 +296,15 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", lineHeight: 36 },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 4 },
-  driveCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 18,
+  filterScroll: { marginBottom: 16 },
+  filterRow: { paddingHorizontal: 20, gap: 8, flexDirection: "row", alignItems: "center" },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     borderWidth: 1.5,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
-  driveCardLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  driveIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  driveIcon: { fontSize: 24 },
-  driveTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
-  driveSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
-  driveArrow: { fontSize: 28, fontFamily: "Inter_400Regular", marginLeft: 8 },
+  filterChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   sectionLabel: { paddingHorizontal: 20, marginBottom: 12 },
   sectionLabelText: {
     fontSize: 12,

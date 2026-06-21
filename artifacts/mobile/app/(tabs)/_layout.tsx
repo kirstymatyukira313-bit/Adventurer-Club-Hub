@@ -22,7 +22,7 @@ import { useColors } from "@/hooks/useColors";
 const TAB_ITEMS = [
   { name: "index", label: "Home", icon: "home" },
   { name: "lessons", label: "Lessons", icon: "book-open" },
-  { name: "attendance", label: "Attend", icon: "check-circle" },
+  { name: "attendance", label: "Register", icon: "check-circle" },
   { name: "funds", label: "Funds", icon: "dollar-sign" },
   { name: "profile", label: "Profile", icon: "user" },
 ] as const;
