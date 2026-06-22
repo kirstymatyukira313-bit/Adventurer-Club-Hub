@@ -1,0 +1,346 @@
+# ATTENDANCE EXPERIENCE REFINEMENT PASS
+
+Act as a senior software engineer and UX architect with 15+ years of experience building production-ready mobile and web applications.
+
+You are working on an Adventurer Club Management platform that is already functional and preparing for real-world usability testing.
+
+This task focuses ONLY on refining the Register (Attendance) workflow.
+
+The objective is to improve clarity, reduce cognitive load, and create a more natural first-time leader experience.
+
+---
+
+## CRITICAL INSTRUCTIONS
+
+This is NOT a redesign.
+
+This is NOT a refactor.
+
+This is NOT a UI refresh.
+
+Do NOT modify:
+
+* navigation
+* curriculum content
+* lesson functionality
+* funds functionality
+* profile functionality
+* onboarding
+* dashboard
+* design system
+* color palette
+* typography
+* spacing system
+* existing component library
+
+Only make the attendance workflow changes described below.
+
+Preserve all existing attendance data structures and attendance history functionality.
+
+---
+
+# 1. EMPTY STATE EXPERIENCE
+
+## Problem
+
+A brand-new leader with zero members currently sees:
+
+* Session Type
+* Session Date
+* Add Guest
+* Save Attendance
+* Attendance Controls
+
+This creates confusion because attendance cannot be taken without members.
+
+---
+
+## Required Behaviour
+
+When:
+
+```text
+memberCount === 0
+```
+
+Display a dedicated empty state.
+
+Screen Title:
+
+Register Attendance
+
+Content:
+
+👥
+
+No Members Yet
+
+Add club members before registering attendance.
+
+Primary Action:
+
+[ Add Members ]
+
+---
+
+## Requirements
+
+Hide:
+
+* Session Type
+* Session Date
+* Attendance List
+* Save Attendance Button
+* Add Guest Button
+* Attendance Controls
+
+Do not render attendance-related actions until members exist.
+
+The screen should feel focused and uncluttered.
+
+---
+
+# 2. ACTIVE ATTENDANCE WORKFLOW
+
+## Problem
+
+Attendance controls should only appear when members exist.
+
+---
+
+## Required Behaviour
+
+When:
+
+```text
+memberCount > 0
+```
+
+Display:
+
+* Session Type Selector
+* Session Date Selector
+* Attendance List
+* Save Attendance Button
+* Guest Functionality
+
+Preserve all existing attendance functionality.
+
+Do not modify attendance logic.
+
+Only modify visibility behaviour.
+
+---
+
+# 3. GUEST REGISTRATION IMPROVEMENT
+
+## Problem
+
+The Add Guest action currently competes visually with attendance actions.
+
+Guests are secondary to member attendance.
+
+---
+
+## Required Behaviour
+
+Convert Add Guest into a Floating Action Button.
+
+Behaviour:
+
+On screen load:
+
+Display expanded state:
+
+```text
++ Add Guest
+```
+
+After 5 seconds:
+
+Automatically collapse into:
+
+```text
++
+```
+
+Requirements:
+
+* Smooth transition
+* Mobile friendly
+* Easily discoverable
+* Re-expand when tapped
+* Preserve existing guest functionality
+
+Do not modify guest data handling.
+
+---
+
+# 4. ATTENDANCE COMPLETION EXPERIENCE
+
+## Problem
+
+After attendance is saved, the attendance list remains visible.
+
+This creates uncertainty about whether attendance was successfully recorded.
+
+Users should receive clear task completion feedback.
+
+---
+
+## Required Behaviour
+
+After successful attendance save:
+
+Display confirmation state.
+
+Example:
+
+✓ Attendance Recorded
+
+18 Present
+
+2 Absent
+
+Session saved successfully.
+
+Available Actions:
+
+[ View Attendance History ]
+
+[ Register Another Session ]
+
+---
+
+## Requirements
+
+The confirmation state should replace the active attendance form.
+
+Do not leave checkboxes visible after successful submission.
+
+The user should feel the task is complete.
+
+---
+
+# 5. REGISTER ANOTHER SESSION FLOW
+
+When:
+
+[ Register Another Session ]
+
+is selected:
+
+Return the user to the attendance workflow.
+
+Preserve convenience by prefilling:
+
+* previous session type
+* previous attendance settings where appropriate
+
+Do not force unnecessary re-entry.
+
+---
+
+# 6. ATTENDANCE HISTORY ACCESS
+
+When:
+
+[ View Attendance History ]
+
+is selected:
+
+Navigate to the existing attendance history experience.
+
+Do not redesign history screens.
+
+Do not alter attendance records.
+
+Only provide a convenient entry point.
+
+---
+
+# 7. MOBILE EXPERIENCE VALIDATION
+
+Ensure:
+
+✓ Works on small Android screens
+
+✓ No overflow issues
+
+✓ Floating action button remains accessible
+
+✓ Confirmation state is readable
+
+✓ Empty state remains centered and clean
+
+✓ No layout shifting
+
+✓ No scrolling issues
+
+---
+
+# 8. PRESERVE EXISTING FUNCTIONALITY
+
+Verify that the following continue working exactly as before:
+
+✓ Attendance tracking
+
+✓ Attendance history
+
+✓ Session types
+
+✓ Session dates
+
+✓ Guest registration
+
+✓ Member attendance marking
+
+✓ Existing attendance records
+
+✓ Existing member records
+
+✓ Dashboard attendance snapshots
+
+---
+
+# 9. QUALITY ASSURANCE
+
+After implementation verify:
+
+✓ No TypeScript errors
+
+✓ No runtime errors
+
+✓ No broken routes
+
+✓ No broken attendance records
+
+✓ No visual regressions
+
+✓ No functionality regressions
+
+---
+
+# FINAL REPORT
+
+Provide:
+
+1. Files modified
+2. Changes implemented
+3. Any issues discovered
+4. Any issues fixed
+5. Confirmation that existing attendance functionality remains intact
+
+IMPORTANT:
+
+After implementing these attendance refinements:
+
+STOP.
+
+Do not redesign any screens.
+
+Do not modify unrelated functionality.
+
+Do not refactor working systems.
+
+This is a focused attendance workflow refinement pass only.

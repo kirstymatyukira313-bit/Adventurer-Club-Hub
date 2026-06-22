@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useMemo, useState } from "react";
+import { router } from "expo-router";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -88,6 +90,18 @@ export default function AttendanceScreen() {
   const [guests, setGuests] = useState<AttendanceGuest[]>([]);
   const [saved, setSaved] = useState(false);
 
+  // Confirmation state — shown after successful save
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmedPresent, setConfirmedPresent] = useState(0);
+  const [confirmedAbsent, setConfirmedAbsent] = useState(0);
+  const [confirmedSessionType, setConfirmedSessionType] = useState<SessionType>("Regular Meeting");
+  const [confirmedDate, setConfirmedDate] = useState("");
+
+  // FAB state for Add Guest
+  const [fabExpanded, setFabExpanded] = useState(true);
+  const fabWidth = useRef(new Animated.Value(1)).current;
+  const fabCollapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [showAddGuest, setShowAddGuest] = useState(false);
   const [guestName, setGuestName] = useState("");
 
@@ -101,6 +115,43 @@ export default function AttendanceScreen() {
 
   // Session type dropdown modal
   const [showSessionDropdown, setShowSessionDropdown] = useState(false);
+
+  // FAB auto-collapse after 5 seconds on record tab with members
+  useEffect(() => {
+    if (activeTab === "record" && members.length > 0 && !showConfirmation) {
+      setFabExpanded(true);
+      Animated.timing(fabWidth, { toValue: 1, duration: 250, useNativeDriver: false }).start();
+      if (fabCollapseTimer.current) clearTimeout(fabCollapseTimer.current);
+      fabCollapseTimer.current = setTimeout(() => {
+        collapseFab();
+      }, 5000);
+    }
+    return () => {
+      if (fabCollapseTimer.current) clearTimeout(fabCollapseTimer.current);
+    };
+  }, [activeTab, members.length, showConfirmation]);
+
+  function collapseFab() {
+    setFabExpanded(false);
+    Animated.timing(fabWidth, { toValue: 0, duration: 300, useNativeDriver: false }).start();
+  }
+
+  function expandFab() {
+    setFabExpanded(true);
+    Animated.timing(fabWidth, { toValue: 1, duration: 250, useNativeDriver: false }).start();
+    if (fabCollapseTimer.current) clearTimeout(fabCollapseTimer.current);
+    fabCollapseTimer.current = setTimeout(() => {
+      collapseFab();
+    }, 5000);
+  }
+
+  function handleFabPress() {
+    if (!fabExpanded) {
+      expandFab();
+      return;
+    }
+    setShowAddGuest(true);
+  }
 
   // Build calendar grid for the currently displayed month
   const calendarDays = useMemo(() => {
@@ -152,6 +203,7 @@ export default function AttendanceScreen() {
     const ds = calDateStr(day);
     setSelectedDate(ds);
     setSaved(false);
+    setShowConfirmation(false);
     setShowDatePicker(false);
     Haptics.selectionAsync();
   }
@@ -188,6 +240,9 @@ export default function AttendanceScreen() {
   };
 
   const handleSave = () => {
+    const currentPresent = members.filter((m) => presentMap[m.id] !== false).length;
+    const currentAbsent = members.length - currentPresent;
+
     if (sessionType === "No Session") {
       saveAttendance(selectedDate, "No Session", [], [], noSessionReason || undefined, noSessionNote.trim() || undefined);
     } else {
@@ -196,6 +251,32 @@ export default function AttendanceScreen() {
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSaved(true);
+
+    setConfirmedPresent(currentPresent);
+    setConfirmedAbsent(currentAbsent);
+    setConfirmedSessionType(sessionType);
+    setConfirmedDate(selectedDate);
+    setShowConfirmation(true);
+  };
+
+  const handleRegisterAnother = () => {
+    const prevSessionType = confirmedSessionType;
+    setShowConfirmation(false);
+    setSaved(false);
+    setSelectedDate(today);
+    setSessionType(prevSessionType);
+    setGuests([]);
+    const map: Record<string, boolean> = {};
+    members.forEach((m) => { map[m.id] = true; });
+    setPresentMap(map);
+    setNoSessionReason("");
+    setNoSessionNote("");
+    expandFab();
+  };
+
+  const handleViewHistory = () => {
+    setShowConfirmation(false);
+    setActiveTab("history");
   };
 
   const handleAddGuest = () => {
@@ -213,6 +294,7 @@ export default function AttendanceScreen() {
   };
 
   const handleEditSession = (record: AttendanceRecord) => {
+    setShowConfirmation(false);
     setSelectedDate(record.date);
     setActiveTab("record");
   };
@@ -258,216 +340,280 @@ export default function AttendanceScreen() {
     );
   };
 
+  const fabLabelWidth = fabWidth.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 90],
+  });
+  const fabLabelOpacity = fabWidth.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Fixed Header */}
       <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background }]}>
-        <Text style={[styles.title, { color: colors.navy }]}>Attendance</Text>
+        <Text style={[styles.title, { color: colors.navy }]}>
+          {members.length === 0 ? "Register Attendance" : "Attendance"}
+        </Text>
 
-        {/* Tab Switcher */}
-        <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
-          {(["record", "history"] as AttendanceTab[]).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && { backgroundColor: colors.card }]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Feather
-                name={tab === "record" ? "edit-3" : "clock"}
-                size={14}
-                color={activeTab === tab ? colors.primary : colors.mutedForeground}
-              />
-              <Text style={[styles.tabText, { color: activeTab === tab ? colors.primary : colors.mutedForeground }]}>
-                {tab === "record" ? "Record" : "History"}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Tab Switcher — only shown when members exist */}
+        {members.length > 0 && (
+          <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
+            {(["record", "history"] as AttendanceTab[]).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tab, activeTab === tab && { backgroundColor: colors.card }]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Feather
+                  name={tab === "record" ? "edit-3" : "clock"}
+                  size={14}
+                  color={activeTab === tab ? colors.primary : colors.mutedForeground}
+                />
+                <Text style={[styles.tabText, { color: activeTab === tab ? colors.primary : colors.mutedForeground }]}>
+                  {tab === "record" ? "Record" : "History"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
-      {/* ── RECORD TAB ── */}
-      {activeTab === "record" && (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: bottomPad + 110 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Date Dropdown */}
-          <View style={[styles.section, { marginTop: 8 }]}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Session Date</Text>
-            <TouchableOpacity
-              style={[styles.dropdownBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={openDatePicker}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.dropdownIconBox, { backgroundColor: colors.blueLight }]}>
-                <Feather name="calendar" size={16} color={colors.primary} />
-              </View>
-              <View style={styles.dropdownMeta}>
-                <Text style={[styles.dropdownPrimary, { color: colors.navy }]}>
-                  {dateLabel}
-                </Text>
-                <Text style={[styles.dropdownSub, { color: colors.mutedForeground }]}>
-                  {formatDisplayDate(selectedDate)}
-                </Text>
-              </View>
-              <View style={styles.dropdownRight}>
-                {hasSavedForDate && (
-                  <View style={[styles.savedPill, { backgroundColor: colors.successLight }]}>
-                    <Feather name="check" size={10} color={colors.success} />
-                    <Text style={[styles.savedPillText, { color: colors.success }]}>Saved</Text>
+      {/* ── EMPTY STATE (no members) ── */}
+      {members.length === 0 && (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateEmoji}>👥</Text>
+          <Text style={[styles.emptyStateTitle, { color: colors.navy }]}>No Members Yet</Text>
+          <Text style={[styles.emptyStateText, { color: colors.mutedForeground }]}>
+            Add club members before registering attendance.
+          </Text>
+          <TouchableOpacity
+            style={[styles.emptyStateBtn, { backgroundColor: colors.primary }]}
+            onPress={() => router.push("/members")}
+            activeOpacity={0.85}
+          >
+            <Feather name="user-plus" size={18} color="#FFF" />
+            <Text style={styles.emptyStateBtnText}>Add Members</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── RECORD TAB (members exist) ── */}
+      {members.length > 0 && activeTab === "record" && (
+
+        <>
+          {/* Confirmation State */}
+          {showConfirmation ? (
+            <View style={styles.confirmationContainer}>
+              <View style={[styles.confirmationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={[styles.confirmationIconCircle, { backgroundColor: colors.successLight }]}>
+                  <Feather name="check" size={32} color={colors.success} />
+                </View>
+                <Text style={[styles.confirmationTitle, { color: colors.navy }]}>Attendance Recorded</Text>
+
+                {confirmedSessionType !== "No Session" && (
+                  <View style={styles.confirmationStats}>
+                    <View style={[styles.confirmationStatCard, { backgroundColor: colors.successLight }]}>
+                      <Text style={[styles.confirmationStatNum, { color: colors.success }]}>{confirmedPresent}</Text>
+                      <Text style={[styles.confirmationStatLabel, { color: colors.success }]}>Present</Text>
+                    </View>
+                    <View style={[styles.confirmationStatCard, { backgroundColor: "#FEE2E2" }]}>
+                      <Text style={[styles.confirmationStatNum, { color: colors.destructive }]}>{confirmedAbsent}</Text>
+                      <Text style={[styles.confirmationStatLabel, { color: colors.destructive }]}>Absent</Text>
+                    </View>
                   </View>
                 )}
-                <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-              </View>
-            </TouchableOpacity>
-          </View>
 
-          {/* Session Type Dropdown */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Session Type</Text>
-            <TouchableOpacity
-              style={[styles.dropdownBtn, { backgroundColor: meta.bg, borderColor: meta.color }]}
-              onPress={() => setShowSessionDropdown(true)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.dropdownIconBox, { backgroundColor: meta.color + "20" }]}>
-                <Feather name={meta.icon} size={16} color={meta.color} />
-              </View>
-              <View style={styles.dropdownMeta}>
-                <Text style={[styles.dropdownPrimary, { color: meta.color }]}>{sessionType}</Text>
-              </View>
-              <Feather name="chevron-down" size={18} color={meta.color} />
-            </TouchableOpacity>
-          </View>
-
-          {/* ── No Session Flow ── */}
-          {sessionType === "No Session" ? (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Reason (optional)</Text>
-              <View style={styles.reasonRow}>
-                {NO_SESSION_REASONS.map((r) => (
-                  <TouchableOpacity
-                    key={r}
-                    style={[
-                      styles.reasonChip,
-                      {
-                        backgroundColor: noSessionReason === r ? "#F3F4F6" : colors.card,
-                        borderColor: noSessionReason === r ? "#6B7280" : colors.border,
-                      },
-                    ]}
-                    onPress={() => { setNoSessionReason(r); setSaved(false); }}
-                  >
-                    <Text
-                      style={[
-                        styles.reasonText,
-                        { color: noSessionReason === r ? "#374151" : colors.mutedForeground },
-                      ]}
-                    >
-                      {r}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: 16 }]}>Note (optional)</Text>
-              <TextInput
-                style={[
-                  styles.noteInput,
-                  { borderColor: colors.border, color: colors.navy, backgroundColor: colors.card },
-                ]}
-                value={noSessionNote}
-                onChangeText={(v) => { setNoSessionNote(v); setSaved(false); }}
-                placeholder="Add a note about why the session was skipped..."
-                placeholderTextColor={colors.mutedForeground}
-                multiline
-                numberOfLines={3}
-              />
-
-              <View style={[styles.noSessionBanner, { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" }]}>
-                <Feather name="info" size={16} color="#6B7280" />
-                <Text style={[styles.noSessionBannerText, { color: "#4B5563" }]}>
-                  This week will be saved as "No Session Held" in your attendance history.
+                <Text style={[styles.confirmationSubtext, { color: colors.mutedForeground }]}>
+                  {confirmedSessionType === "No Session"
+                    ? "No session recorded for " + formatDisplayDate(confirmedDate)
+                    : "Session saved successfully."}
                 </Text>
               </View>
+
+              <TouchableOpacity
+                style={[styles.confirmationBtn, { backgroundColor: colors.primary }]}
+                onPress={handleViewHistory}
+                activeOpacity={0.85}
+              >
+                <Feather name="clock" size={18} color="#FFF" />
+                <Text style={styles.confirmationBtnText}>View Attendance History</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmationBtnOutline, { borderColor: colors.border, backgroundColor: colors.card }]}
+                onPress={handleRegisterAnother}
+                activeOpacity={0.85}
+              >
+                <Feather name="edit-3" size={18} color={colors.navy} />
+                <Text style={[styles.confirmationBtnOutlineText, { color: colors.navy }]}>Register Another Session</Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            <>
-              {/* Attendance Summary */}
-              {members.length > 0 && (
-                <View style={styles.summarySection}>
-                  <View style={[styles.summaryCard, { backgroundColor: colors.successLight }]}>
-                    <Text style={[styles.summaryNum, { color: colors.success }]}>{presentCount}</Text>
-                    <Text style={[styles.summaryLabel, { color: colors.success }]}>Present</Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: bottomPad + 110 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Date Dropdown */}
+              <View style={[styles.section, { marginTop: 8 }]}>
+                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Session Date</Text>
+                <TouchableOpacity
+                  style={[styles.dropdownBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={openDatePicker}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.dropdownIconBox, { backgroundColor: colors.blueLight }]}>
+                    <Feather name="calendar" size={16} color={colors.primary} />
                   </View>
-                  <View style={[styles.summaryCard, { backgroundColor: "#FEE2E2" }]}>
-                    <Text style={[styles.summaryNum, { color: colors.destructive }]}>{absentCount}</Text>
-                    <Text style={[styles.summaryLabel, { color: colors.destructive }]}>Absent</Text>
+                  <View style={styles.dropdownMeta}>
+                    <Text style={[styles.dropdownPrimary, { color: colors.navy }]}>
+                      {dateLabel}
+                    </Text>
+                    <Text style={[styles.dropdownSub, { color: colors.mutedForeground }]}>
+                      {formatDisplayDate(selectedDate)}
+                    </Text>
                   </View>
-                  <View style={[styles.summaryCard, { backgroundColor: "#F3F4F6" }]}>
-                    <Text style={[styles.summaryNum, { color: "#374151" }]}>{guests.length}</Text>
-                    <Text style={[styles.summaryLabel, { color: "#6B7280" }]}>Guests</Text>
+                  <View style={styles.dropdownRight}>
+                    {hasSavedForDate && (
+                      <View style={[styles.savedPill, { backgroundColor: colors.successLight }]}>
+                        <Feather name="check" size={10} color={colors.success} />
+                        <Text style={[styles.savedPillText, { color: colors.success }]}>Saved</Text>
+                      </View>
+                    )}
+                    <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
                   </View>
-                </View>
-              )}
+                </TouchableOpacity>
+              </View>
 
-              {/* Member List */}
-              {members.length === 0 ? (
-                <View style={styles.empty}>
-                  <Feather name="users" size={40} color={colors.border} />
-                  <Text style={[styles.emptyTitle, { color: colors.navy }]}>No members yet</Text>
-                  <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                    Add club members from the Profile tab
-                  </Text>
+              {/* Session Type Dropdown */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Session Type</Text>
+                <TouchableOpacity
+                  style={[styles.dropdownBtn, { backgroundColor: meta.bg, borderColor: meta.color }]}
+                  onPress={() => setShowSessionDropdown(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.dropdownIconBox, { backgroundColor: meta.color + "20" }]}>
+                    <Feather name={meta.icon} size={16} color={meta.color} />
+                  </View>
+                  <View style={styles.dropdownMeta}>
+                    <Text style={[styles.dropdownPrimary, { color: meta.color }]}>{sessionType}</Text>
+                  </View>
+                  <Feather name="chevron-down" size={18} color={meta.color} />
+                </TouchableOpacity>
+              </View>
+
+              {/* ── No Session Flow ── */}
+              {sessionType === "No Session" ? (
+                <View style={styles.section}>
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Reason (optional)</Text>
+                  <View style={styles.reasonRow}>
+                    {NO_SESSION_REASONS.map((r) => (
+                      <TouchableOpacity
+                        key={r}
+                        style={[
+                          styles.reasonChip,
+                          {
+                            backgroundColor: noSessionReason === r ? "#F3F4F6" : colors.card,
+                            borderColor: noSessionReason === r ? "#6B7280" : colors.border,
+                          },
+                        ]}
+                        onPress={() => { setNoSessionReason(r); setSaved(false); }}
+                      >
+                        <Text
+                          style={[
+                            styles.reasonText,
+                            { color: noSessionReason === r ? "#374151" : colors.mutedForeground },
+                          ]}
+                        >
+                          {r}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground, marginTop: 16 }]}>Note (optional)</Text>
+                  <TextInput
+                    style={[
+                      styles.noteInput,
+                      { borderColor: colors.border, color: colors.navy, backgroundColor: colors.card },
+                    ]}
+                    value={noSessionNote}
+                    onChangeText={(v) => { setNoSessionNote(v); setSaved(false); }}
+                    placeholder="Add a note about why the session was skipped..."
+                    placeholderTextColor={colors.mutedForeground}
+                    multiline
+                    numberOfLines={3}
+                  />
+
+                  <View style={[styles.noSessionBanner, { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" }]}>
+                    <Feather name="info" size={16} color="#6B7280" />
+                    <Text style={[styles.noSessionBannerText, { color: "#4B5563" }]}>
+                      This week will be saved as "No Session Held" in your attendance history.
+                    </Text>
+                  </View>
                 </View>
               ) : (
-                <View style={styles.section}>
-                  <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-                    Members · Tap to mark absent
-                  </Text>
-                  {members.map((m) => (
-                    <View key={m.id} style={{ marginBottom: 10 }}>
-                      {renderMember({ item: m })}
+                <>
+                  {/* Attendance Summary */}
+                  <View style={styles.summarySection}>
+                    <View style={[styles.summaryCard, { backgroundColor: colors.successLight }]}>
+                      <Text style={[styles.summaryNum, { color: colors.success }]}>{presentCount}</Text>
+                      <Text style={[styles.summaryLabel, { color: colors.success }]}>Present</Text>
                     </View>
-                  ))}
-                </View>
-              )}
+                    <View style={[styles.summaryCard, { backgroundColor: "#FEE2E2" }]}>
+                      <Text style={[styles.summaryNum, { color: colors.destructive }]}>{absentCount}</Text>
+                      <Text style={[styles.summaryLabel, { color: colors.destructive }]}>Absent</Text>
+                    </View>
+                    <View style={[styles.summaryCard, { backgroundColor: "#F3F4F6" }]}>
+                      <Text style={[styles.summaryNum, { color: "#374151" }]}>{guests.length}</Text>
+                      <Text style={[styles.summaryLabel, { color: "#6B7280" }]}>Guests</Text>
+                    </View>
+                  </View>
 
-              {/* Guests Section */}
-              <View style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Guests</Text>
-                {guests.length > 0 && (
-                  <View style={styles.guestList}>
-                    {guests.map((g) => (
-                      <View
-                        key={g.id}
-                        style={[styles.guestChip, { backgroundColor: "#F5F3FF", borderColor: "#DDD6FE" }]}
-                      >
-                        <Feather name="user-plus" size={13} color="#7C3AED" />
-                        <Text style={[styles.guestName, { color: "#5B21B6" }]}>{g.name}</Text>
-                        <TouchableOpacity onPress={() => removeGuest(g.id)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                          <Feather name="x" size={13} color="#7C3AED" />
-                        </TouchableOpacity>
+                  {/* Member List */}
+                  <View style={styles.section}>
+                    <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+                      Members · Tap to mark absent
+                    </Text>
+                    {members.map((m) => (
+                      <View key={m.id} style={{ marginBottom: 10 }}>
+                        {renderMember({ item: m })}
                       </View>
                     ))}
                   </View>
-                )}
-                <TouchableOpacity
-                  style={[styles.addGuestBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
-                  onPress={() => setShowAddGuest(true)}
-                  activeOpacity={0.8}
-                >
-                  <Feather name="user-plus" size={16} color={colors.primary} />
-                  <Text style={[styles.addGuestText, { color: colors.primary }]}>Add Guest</Text>
-                </TouchableOpacity>
-              </View>
-            </>
+
+                  {/* Guests Section */}
+                  {guests.length > 0 && (
+                    <View style={styles.section}>
+                      <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Guests</Text>
+                      <View style={styles.guestList}>
+                        {guests.map((g) => (
+                          <View
+                            key={g.id}
+                            style={[styles.guestChip, { backgroundColor: "#F5F3FF", borderColor: "#DDD6FE" }]}
+                          >
+                            <Feather name="user-plus" size={13} color="#7C3AED" />
+                            <Text style={[styles.guestName, { color: "#5B21B6" }]}>{g.name}</Text>
+                            <TouchableOpacity onPress={() => removeGuest(g.id)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                              <Feather name="x" size={13} color="#7C3AED" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
           )}
-        </ScrollView>
+        </>
       )}
 
       {/* ── HISTORY TAB ── */}
-      {activeTab === "history" && (
+      {members.length > 0 && activeTab === "history" && (
         <>
           {history.length === 0 ? (
             <View style={styles.empty}>
@@ -542,7 +688,7 @@ export default function AttendanceScreen() {
       )}
 
       {/* ── Save Button ── */}
-      {activeTab === "record" && (
+      {members.length > 0 && activeTab === "record" && !showConfirmation && (
         <View
           style={[
             styles.footer,
@@ -571,6 +717,25 @@ export default function AttendanceScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* ── Floating Action Button (Add Guest) ── */}
+      {members.length > 0 && activeTab === "record" && !showConfirmation && sessionType !== "No Session" && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.primary, bottom: bottomPad + 100 }]}
+          onPress={handleFabPress}
+          activeOpacity={0.85}
+        >
+          <Feather name="user-plus" size={20} color="#FFF" />
+          <Animated.View style={{ width: fabLabelWidth, overflow: "hidden" }}>
+            <Animated.Text
+              style={[styles.fabLabel, { opacity: fabLabelOpacity }]}
+              numberOfLines={1}
+            >
+              {" "}Add Guest
+            </Animated.Text>
+          </Animated.View>
+        </TouchableOpacity>
       )}
 
       {/* ── Calendar Modal ── */}
@@ -951,12 +1116,103 @@ const styles = StyleSheet.create({
   guestList: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
   guestChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
   guestName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  addGuestBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderStyle: "dashed", alignSelf: "flex-start", marginBottom: 16 },
-  addGuestText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingTop: 60 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold" },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", paddingHorizontal: 40 },
+
+  // Empty state (no members)
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 16,
+  },
+  emptyStateEmoji: { fontSize: 56, lineHeight: 68 },
+  emptyStateTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
+  emptyStateText: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
+  emptyStateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginTop: 8,
+  },
+  emptyStateBtnText: { color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+
+  // Confirmation state
+  confirmationContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 14,
+  },
+  confirmationCard: {
+    width: "100%",
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 28,
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 6,
+  },
+  confirmationIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  confirmationTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
+  confirmationStats: { flexDirection: "row", gap: 12, width: "100%" },
+  confirmationStatCard: { flex: 1, borderRadius: 14, padding: 14, alignItems: "center", gap: 4 },
+  confirmationStatNum: { fontSize: 28, fontFamily: "Inter_700Bold" },
+  confirmationStatLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  confirmationSubtext: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  confirmationBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
+    paddingVertical: 18,
+    borderRadius: 16,
+  },
+  confirmationBtnText: { color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  confirmationBtnOutline: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  confirmationBtnOutlineText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+
+  // FAB
+  fab: {
+    position: "absolute",
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 28,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    overflow: "hidden",
+  },
+  fabLabel: { color: "#FFF", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 
   footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, position: "absolute", bottom: 0, left: 0, right: 0 },
   saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: 16, gap: 10 },
@@ -1019,15 +1275,15 @@ const styles = StyleSheet.create({
   viewTypePillText: { color: "#FFF", fontSize: 13, fontFamily: "Inter_600SemiBold" },
   viewDate: { fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 4 },
   viewSummary: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  viewGroupLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
-  viewMemberRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, marginBottom: 8 },
+  viewGroupLabel: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
+  viewMemberRow: { flexDirection: "row", alignItems: "center", borderRadius: 12, padding: 12, marginBottom: 8, gap: 12 },
   viewAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  viewAvatarText: { color: "#FFF", fontSize: 14, fontFamily: "Inter_700Bold" },
-  viewMemberName: { flex: 1, fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  noSessionInfo: { borderRadius: 16, borderWidth: 1, padding: 24, alignItems: "center", gap: 10 },
+  viewAvatarText: { color: "#FFF", fontSize: 15, fontFamily: "Inter_700Bold" },
+  viewMemberName: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
+  noSessionInfo: { borderRadius: 16, borderWidth: 1, padding: 24, alignItems: "center", gap: 12 },
   noSessionInfoTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   noSessionInfoReason: { fontSize: 14, fontFamily: "Inter_500Medium" },
   noSessionInfoNote: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  editFromViewBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16, borderRadius: 16 },
-  editFromViewText: { color: "#FFF", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  editFromViewBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 16, borderRadius: 14 },
+  editFromViewText: { color: "#FFF", fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });
