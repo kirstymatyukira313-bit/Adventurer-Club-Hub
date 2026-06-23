@@ -505,6 +505,52 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
   console.log("Manifests updated");
 }
 
+async function buildWebExport() {
+  console.log("Building web export (this enables Chrome / browser access)...");
+
+  const webOutputDir = path.join(projectRoot, "static-build", "web");
+  fs.mkdirSync(webOutputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      "pnpm",
+      ["exec", "expo", "export", "--platform", "web", "--output-dir", "static-build/web"],
+      {
+        stdio: ["ignore", "pipe", "pipe"],
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          NODE_ENV: "production",
+        },
+      },
+    );
+
+    if (proc.stdout) {
+      proc.stdout.on("data", (data) => {
+        const output = data.toString().trim();
+        if (output) console.log(`[Web] ${output}`);
+      });
+    }
+    if (proc.stderr) {
+      proc.stderr.on("data", (data) => {
+        const output = data.toString().trim();
+        if (output) console.error(`[Web Error] ${output}`);
+      });
+    }
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        console.log("Web export complete");
+        resolve();
+      } else {
+        reject(new Error(`Web export exited with code ${code}`));
+      }
+    });
+
+    proc.on("error", reject);
+  });
+}
+
 async function main() {
   console.log("Building static Expo Go deployment...");
 
@@ -556,11 +602,16 @@ async function main() {
   console.log("Updating manifests and creating landing page...");
   updateManifests(manifests, timestamp, baseUrl, assetsByHash);
 
-  console.log("Build complete! Deploy to:", baseUrl);
-
   if (metroProcess) {
+    console.log("Stopping Metro before web export...");
     metroProcess.kill();
+    metroProcess = null;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
+
+  await buildWebExport();
+
+  console.log("Build complete! Deploy to:", baseUrl);
   process.exit(0);
 }
 
