@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useCallback,
@@ -18,8 +17,8 @@ import type {
   Member,
   SessionType,
 } from "@/types";
-
-const STORAGE_KEY = "adventurer_club_state_v1";
+import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/utils/api";
 
 interface LessonCompletions {
   [lessonId: string]: string[];
@@ -35,7 +34,6 @@ export interface ReminderSettings {
 }
 
 interface AppState {
-  isOnboardingComplete: boolean;
   club: ClubInfo;
   members: Member[];
   lessonCompletions: LessonCompletions;
@@ -57,15 +55,7 @@ const DEFAULT_REMINDERS: ReminderSettings = {
 };
 
 const DEFAULT_STATE: AppState = {
-  isOnboardingComplete: false,
-  club: {
-    name: "",
-    churchName: "",
-    leaderName: "",
-    role: "Club Leader",
-    conference: "",
-    district: "",
-  },
+  club: { name: "", churchName: "", leaderName: "", role: "Club Leader", conference: "", district: "" },
   members: [],
   lessonCompletions: {},
   attendance: [],
@@ -78,11 +68,12 @@ const DEFAULT_STATE: AppState = {
 
 interface AppContextType extends AppState {
   isLoading: boolean;
+  isOnboardingComplete: boolean;
   completeOnboarding: (
     club: ClubInfo,
     role: LeaderRole,
     members: Omit<Member, "id" | "hasPaid" | "amountPaid">[]
-  ) => void;
+  ) => Promise<void>;
   addMember: (member: Omit<Member, "id" | "hasPaid" | "amountPaid">) => void;
   updateMember: (id: string, updates: Partial<Member>) => void;
   deleteMember: (id: string) => void;
@@ -119,89 +110,129 @@ function generateId(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
+interface ServerState {
+  club: {
+    name: string;
+    churchName: string;
+    role: string;
+    conference: string | null;
+    district: string | null;
+    subscriptionAmount: number | null;
+    subscriptionTarget: number | null;
+  } | null;
+  members: Member[];
+  attendance: AttendanceRecord[];
+  expenses: Expense[];
+  lessonCompletions: LessonCompletions;
+  driveFiles: DriveFile[];
+  reminders: ReminderSettings | null;
+}
+
+function mapServerState(data: ServerState, displayName: string): AppState {
+  return {
+    club: {
+      name: data.club?.name ?? "",
+      churchName: data.club?.churchName ?? "",
+      leaderName: displayName,
+      role: (data.club?.role ?? "Club Leader") as LeaderRole,
+      conference: data.club?.conference ?? "",
+      district: data.club?.district ?? "",
+    },
+    members: data.members ?? [],
+    attendance: data.attendance ?? [],
+    expenses: data.expenses ?? [],
+    lessonCompletions: data.lessonCompletions ?? {},
+    driveFiles: data.driveFiles ?? [],
+    reminders: data.reminders ?? DEFAULT_REMINDERS,
+    subscriptionAmount: data.club?.subscriptionAmount ?? 1,
+    subscriptionTarget: data.club?.subscriptionTarget ?? 0,
+  };
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { userId, clubId, displayName, isAuthLoading, login, logout: authLogout } = useAuth();
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadState();
-  }, []);
+    if (isAuthLoading) return;
+    if (userId && clubId) {
+      loadFromServer();
+    } else {
+      setIsLoading(false);
+    }
+  }, [userId, clubId, isAuthLoading]);
 
-  async function loadState() {
+  async function loadFromServer() {
+    setIsLoading(true);
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as AppState;
-        setState(parsed);
-      }
+      const data = await apiFetch<ServerState>("/clubs/me/state");
+      setState(mapServerState(data, displayName ?? ""));
     } catch {
-      // use default state
+      // use default state on error
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function saveState(newState: AppState) {
-    setState(newState);
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    } catch {
-      // ignore storage errors
-    }
-  }
+  const isOnboardingComplete = !!userId && !!clubId;
 
   const completeOnboarding = useCallback(
-    (
-      club: ClubInfo,
-      role: LeaderRole,
-      initialMembers: Omit<Member, "id" | "hasPaid" | "amountPaid">[]
-    ) => {
-      const members: Member[] = initialMembers.map((m) => ({
-        ...m,
-        id: generateId(),
-        hasPaid: false,
-        amountPaid: 0,
-      }));
-      saveState({
-        ...state,
-        isOnboardingComplete: true,
+    async (club: ClubInfo, role: LeaderRole, _initialMembers: Omit<Member, "id" | "hasPaid" | "amountPaid">[]) => {
+      const data = await apiFetch<{ userId: string; clubId: string; displayName: string }>(
+        "/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            displayName: club.leaderName,
+            clubName: club.name,
+            churchName: club.churchName,
+            role,
+          }),
+        },
+      );
+      await login(data.userId, data.clubId, data.displayName);
+      setState({
+        ...DEFAULT_STATE,
         club: { ...club, role },
-        members,
       });
     },
-    [state]
+    [login],
   );
 
   const addMember = useCallback(
     (member: Omit<Member, "id" | "hasPaid" | "amountPaid">) => {
-      const newMember: Member = {
-        ...member,
-        id: generateId(),
-        hasPaid: false,
-        amountPaid: 0,
-      };
-      saveState({ ...state, members: [...state.members, newMember] });
+      const tempId = generateId();
+      const newMember: Member = { ...member, id: tempId, hasPaid: false, amountPaid: 0 };
+      setState((s) => ({ ...s, members: [...s.members, newMember] }));
+      apiFetch<Member>("/clubs/me/members", {
+        method: "POST",
+        body: JSON.stringify(member),
+      }).then((saved) => {
+        setState((s) => ({
+          ...s,
+          members: s.members.map((m) => (m.id === tempId ? saved : m)),
+        }));
+      }).catch(() => {});
     },
-    [state]
+    [],
   );
 
-  const updateMember = useCallback(
-    (id: string, updates: Partial<Member>) => {
-      const members = state.members.map((m) =>
-        m.id === id ? { ...m, ...updates } : m
-      );
-      saveState({ ...state, members });
-    },
-    [state]
-  );
+  const updateMember = useCallback((id: string, updates: Partial<Member>) => {
+    setState((s) => ({
+      ...s,
+      members: s.members.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+    }));
+    apiFetch(`/clubs/me/members/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }).catch(() => {});
+  }, []);
 
-  const deleteMember = useCallback(
-    (id: string) => {
-      const members = state.members.filter((m) => m.id !== id);
-      saveState({ ...state, members });
-    },
-    [state]
-  );
+  const deleteMember = useCallback((id: string) => {
+    setState((s) => ({ ...s, members: s.members.filter((m) => m.id !== id) }));
+    apiFetch(`/clubs/me/members/${id}`, { method: "DELETE" }).catch(() => {});
+  }, []);
 
   const saveAttendance = useCallback(
     (
@@ -212,16 +243,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       noSessionReason?: string,
       noSessionNote?: string,
     ) => {
-      const attendance = state.attendance.filter((a) => a.date !== date);
-      saveState({
-        ...state,
-        attendance: [
-          ...attendance,
-          { date, sessionType, records, guests, noSessionReason, noSessionNote },
-        ],
+      setState((s) => {
+        const filtered = s.attendance.filter((a) => a.date !== date);
+        return {
+          ...s,
+          attendance: [...filtered, { date, sessionType, records, guests, noSessionReason, noSessionNote }],
+        };
       });
+      apiFetch(`/clubs/me/attendance/${date}`, {
+        method: "PUT",
+        body: JSON.stringify({ sessionType, records, guests, noSessionReason, noSessionNote }),
+      }).catch(() => {});
     },
-    [state]
+    [],
   );
 
   const getSessionForDate = useCallback(
@@ -234,149 +268,159 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         guests: record.guests ?? [],
       };
     },
-    [state]
+    [state.attendance],
   );
 
   const getAttendanceHistory = useCallback(
-    (): AttendanceRecord[] => {
-      return [...state.attendance]
+    (): AttendanceRecord[] =>
+      [...state.attendance]
         .map((r) => ({
           ...r,
           sessionType: (r.sessionType as SessionType) ?? "Regular Meeting",
           guests: r.guests ?? [],
         }))
-        .sort((a, b) => b.date.localeCompare(a.date));
-    },
-    [state]
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [state.attendance],
   );
 
-  const markSectionComplete = useCallback(
-    (lessonId: string, sectionId: string) => {
-      const existing = state.lessonCompletions[lessonId] ?? [];
-      if (existing.includes(sectionId)) return;
-      saveState({
-        ...state,
-        lessonCompletions: {
-          ...state.lessonCompletions,
-          [lessonId]: [...existing, sectionId],
-        },
-      });
-    },
-    [state]
-  );
+  const markSectionComplete = useCallback((lessonId: string, sectionId: string) => {
+    setState((s) => {
+      const existing = s.lessonCompletions[lessonId] ?? [];
+      if (existing.includes(sectionId)) return s;
+      const updated = { ...s.lessonCompletions, [lessonId]: [...existing, sectionId] };
+      apiFetch(`/clubs/me/lessons/${lessonId}`, {
+        method: "PUT",
+        body: JSON.stringify({ sectionIds: updated[lessonId] }),
+      }).catch(() => {});
+      return { ...s, lessonCompletions: updated };
+    });
+  }, []);
 
-  const unmarkSectionComplete = useCallback(
-    (lessonId: string, sectionId: string) => {
-      const existing = state.lessonCompletions[lessonId] ?? [];
-      saveState({
-        ...state,
-        lessonCompletions: {
-          ...state.lessonCompletions,
-          [lessonId]: existing.filter((id) => id !== sectionId),
-        },
-      });
-    },
-    [state]
-  );
+  const unmarkSectionComplete = useCallback((lessonId: string, sectionId: string) => {
+    setState((s) => {
+      const existing = s.lessonCompletions[lessonId] ?? [];
+      const updated = { ...s.lessonCompletions, [lessonId]: existing.filter((id) => id !== sectionId) };
+      apiFetch(`/clubs/me/lessons/${lessonId}`, {
+        method: "PUT",
+        body: JSON.stringify({ sectionIds: updated[lessonId] }),
+      }).catch(() => {});
+      return { ...s, lessonCompletions: updated };
+    });
+  }, []);
 
-  const markMemberPaid = useCallback(
-    (memberId: string, paid: boolean) => {
-      const members = state.members.map((m) =>
+  const markMemberPaid = useCallback((memberId: string, paid: boolean) => {
+    setState((s) => {
+      const subscriptionAmount = s.subscriptionAmount;
+      const members = s.members.map((m) =>
         m.id === memberId
-          ? {
-              ...m,
-              hasPaid: paid,
-              amountPaid: paid ? state.subscriptionAmount : 0,
-            }
-          : m
+          ? { ...m, hasPaid: paid, amountPaid: paid ? subscriptionAmount : 0 }
+          : m,
       );
-      saveState({ ...state, members });
-    },
-    [state]
+      const updated = members.find((m) => m.id === memberId);
+      if (updated) {
+        apiFetch(`/clubs/me/members/${memberId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ hasPaid: updated.hasPaid, amountPaid: updated.amountPaid }),
+        }).catch(() => {});
+      }
+      return { ...s, members };
+    });
+  }, []);
+
+  const addExpense = useCallback((expense: Omit<Expense, "id">) => {
+    const tempId = generateId();
+    const newExpense: Expense = { ...expense, id: tempId };
+    setState((s) => ({ ...s, expenses: [...s.expenses, newExpense] }));
+    apiFetch<Expense>("/clubs/me/expenses", {
+      method: "POST",
+      body: JSON.stringify(expense),
+    }).then((saved) => {
+      setState((s) => ({
+        ...s,
+        expenses: s.expenses.map((e) => (e.id === tempId ? saved : e)),
+      }));
+    }).catch(() => {});
+  }, []);
+
+  const updateExpense = useCallback((id: string, updates: Partial<Omit<Expense, "id">>) => {
+    setState((s) => ({
+      ...s,
+      expenses: s.expenses.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+    }));
+    apiFetch(`/clubs/me/expenses/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }).catch(() => {});
+  }, []);
+
+  const deleteExpense = useCallback((id: string) => {
+    setState((s) => ({ ...s, expenses: s.expenses.filter((e) => e.id !== id) }));
+    apiFetch(`/clubs/me/expenses/${id}`, { method: "DELETE" }).catch(() => {});
+  }, []);
+
+  const getTotalCollected = useCallback(
+    () => state.members.filter((m) => m.hasPaid).reduce((sum, m) => sum + m.amountPaid, 0),
+    [state.members],
   );
 
-  const addExpense = useCallback(
-    (expense: Omit<Expense, "id">) => {
-      const newExpense: Expense = { ...expense, id: generateId() };
-      saveState({ ...state, expenses: [...state.expenses, newExpense] });
-    },
-    [state]
+  const getTotalExpenses = useCallback(
+    () => state.expenses.reduce((sum, e) => sum + e.amount, 0),
+    [state.expenses],
   );
 
-  const updateExpense = useCallback(
-    (id: string, updates: Partial<Omit<Expense, "id">>) => {
-      const expenses = state.expenses.map((e) =>
-        e.id === id ? { ...e, ...updates } : e
-      );
-      saveState({ ...state, expenses });
-    },
-    [state]
+  const getUnpaidCount = useCallback(
+    () => state.members.filter((m) => !m.hasPaid).length,
+    [state.members],
   );
 
-  const deleteExpense = useCallback(
-    (id: string) => {
-      saveState({ ...state, expenses: state.expenses.filter((e) => e.id !== id) });
-    },
-    [state]
-  );
+  const updateClub = useCallback((updates: Partial<ClubInfo>) => {
+    setState((s) => ({ ...s, club: { ...s.club, ...updates } }));
+    apiFetch("/clubs/me/club", {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    }).catch(() => {});
+  }, []);
 
-  const getTotalCollected = useCallback(() => {
-    return state.members
-      .filter((m) => m.hasPaid)
-      .reduce((sum, m) => sum + m.amountPaid, 0);
-  }, [state]);
+  const updateSubscriptionSettings = useCallback((amount: number, target: number) => {
+    setState((s) => ({ ...s, subscriptionAmount: amount, subscriptionTarget: target }));
+    apiFetch("/clubs/me/subscription", {
+      method: "PATCH",
+      body: JSON.stringify({ subscriptionAmount: amount, subscriptionTarget: target }),
+    }).catch(() => {});
+  }, []);
 
-  const getTotalExpenses = useCallback(() => {
-    return state.expenses.reduce((sum, e) => sum + e.amount, 0);
-  }, [state]);
+  const addDriveFile = useCallback((file: Omit<DriveFile, "id" | "addedAt">) => {
+    const tempId = generateId();
+    const newFile: DriveFile = { ...file, id: tempId, addedAt: new Date().toISOString() };
+    setState((s) => ({ ...s, driveFiles: [...(s.driveFiles ?? []), newFile] }));
+    apiFetch<DriveFile>("/clubs/me/drive-files", {
+      method: "POST",
+      body: JSON.stringify(file),
+    }).then((saved) => {
+      setState((s) => ({
+        ...s,
+        driveFiles: s.driveFiles.map((f) => (f.id === tempId ? saved : f)),
+      }));
+    }).catch(() => {});
+  }, []);
 
-  const getUnpaidCount = useCallback(() => {
-    return state.members.filter((m) => !m.hasPaid).length;
-  }, [state]);
+  const deleteDriveFile = useCallback((id: string) => {
+    setState((s) => ({ ...s, driveFiles: (s.driveFiles ?? []).filter((f) => f.id !== id) }));
+    apiFetch(`/clubs/me/drive-files/${id}`, { method: "DELETE" }).catch(() => {});
+  }, []);
 
-  const updateClub = useCallback(
-    (updates: Partial<ClubInfo>) => {
-      saveState({ ...state, club: { ...state.club, ...updates } });
-    },
-    [state]
-  );
-
-  const updateSubscriptionSettings = useCallback(
-    (amount: number, target: number) => {
-      saveState({ ...state, subscriptionAmount: amount, subscriptionTarget: target });
-    },
-    [state]
-  );
-
-  const addDriveFile = useCallback(
-    (file: Omit<DriveFile, "id" | "addedAt">) => {
-      const newFile: DriveFile = {
-        ...file,
-        id: generateId(),
-        addedAt: new Date().toISOString(),
-      };
-      saveState({ ...state, driveFiles: [...(state.driveFiles ?? []), newFile] });
-    },
-    [state]
-  );
-
-  const deleteDriveFile = useCallback(
-    (id: string) => {
-      saveState({ ...state, driveFiles: (state.driveFiles ?? []).filter((f) => f.id !== id) });
-    },
-    [state]
-  );
-
-  const updateReminders = useCallback(
-    (settings: ReminderSettings) => {
-      saveState({ ...state, reminders: settings });
-    },
-    [state]
-  );
+  const updateReminders = useCallback((settings: ReminderSettings) => {
+    setState((s) => ({ ...s, reminders: settings }));
+    apiFetch("/clubs/me/reminders", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    }).catch(() => {});
+  }, []);
 
   const logout = useCallback(() => {
-    saveState(DEFAULT_STATE);
-  }, [state]);
+    setState(DEFAULT_STATE);
+    authLogout();
+  }, [authLogout]);
 
   const _ = LESSONS;
 
@@ -384,7 +428,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider
       value={{
         ...state,
-        isLoading,
+        isLoading: isAuthLoading || isLoading,
+        isOnboardingComplete,
         completeOnboarding,
         addMember,
         updateMember,

@@ -60,6 +60,19 @@ export default function WelcomeScreen() {
           <Text style={styles.ctaText}>Set Up My Club</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.returnLink}
+          onPress={() => router.push("/(onboarding)/login")}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.returnText, { color: colors.mutedForeground }]}>
+            Already have an account?{" "}
+            <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+              Sign in
+            </Text>
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.dots}>
           <View style={[styles.progressBar, { backgroundColor: colors.primary }]} />
           <View style={[styles.progressBar, { backgroundColor: colors.border }]} />
@@ -131,6 +144,8 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: "Inter_600SemiBold",
   },
+  returnLink: { alignItems: "center", paddingVertical: 4 },
+  returnText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   dots: {
     flexDirection: "row",
     gap: 8,

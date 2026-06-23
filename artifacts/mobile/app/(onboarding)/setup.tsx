@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -35,25 +36,35 @@ export default function SetupScreen() {
 
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const isValid = fullName.trim() && clubName.trim() && churchName.trim();
 
-  const handleFinish = () => {
-    if (!isValid) return;
-    completeOnboarding(
-      {
-        name: clubName.trim(),
-        churchName: churchName.trim(),
-        leaderName: fullName.trim(),
+  const handleFinish = async () => {
+    if (!isValid || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await completeOnboarding(
+        {
+          name: clubName.trim(),
+          churchName: churchName.trim(),
+          leaderName: fullName.trim(),
+          role,
+          conference: "",
+          district: "",
+        },
         role,
-        conference: "",
-        district: "",
-      },
-      role,
-      []
-    );
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowSuccess(true);
+        []
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowSuccess(true);
+    } catch {
+      setError("Couldn't save your club. Please check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -154,15 +165,22 @@ export default function SetupScreen() {
 
       {/* Finish Setup button */}
       <View style={[styles.footer, { paddingBottom: bottomPad + 16, borderTopColor: colors.border }]}>
+        {error ? (
+          <Text style={[styles.errorText, { color: colors.destructive ?? "#DC2626" }]}>{error}</Text>
+        ) : null}
         <TouchableOpacity
-          style={[styles.cta, { backgroundColor: isValid ? colors.primary : colors.border }]}
+          style={[styles.cta, { backgroundColor: isValid && !saving ? colors.primary : colors.border }]}
           onPress={handleFinish}
-          disabled={!isValid}
+          disabled={!isValid || saving}
           activeOpacity={0.85}
         >
-          <Text style={[styles.ctaText, { color: isValid ? "#FFF" : colors.mutedForeground }]}>
-            Finish Setup
-          </Text>
+          {saving ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={[styles.ctaText, { color: isValid ? "#FFF" : colors.mutedForeground }]}>
+              Finish Setup
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -266,6 +284,7 @@ const styles = StyleSheet.create({
   },
   dropdownValue: { fontSize: 15, fontFamily: "Inter_400Regular" },
   dropdownCaret: { fontSize: 16 },
+  errorText: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 8, textAlign: "center" },
   footer: {
     position: "absolute",
     bottom: 0,

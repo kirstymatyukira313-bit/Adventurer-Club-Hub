@@ -1,0 +1,2 @@
+- [Auth model](auth-model.md) — no email/password; display-name-only login with UUID stored in AsyncStorage; X-User-Id header for API auth
+- [Deployment web build](deployment-web-build.md) — mobile artifact must run `expo export --platform web` in build.js before serve.js; web served at root, Expo Go manifest via expo-platform header
