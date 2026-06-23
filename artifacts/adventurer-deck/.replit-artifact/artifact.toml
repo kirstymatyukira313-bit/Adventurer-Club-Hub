@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/adventurer-deck/"
+title = "Adventurer Club Manager"
+version = "1.0.0"
+id = "artifacts/adventurer-deck"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/adventurer-deck/" ]
+localPort = 18469
+
+[services.development]
+run = "pnpm --filter @workspace/adventurer-deck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/adventurer-deck", "run", "build" ]
+publicDir = "artifacts/adventurer-deck/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18469"
+BASE_PATH = "/adventurer-deck/"
