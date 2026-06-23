@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "AP2zFcAAo8Otc1jSEf1oE"
@@ -18,3 +17,9 @@ id = "ue7m2IwX5PuYb0Yj3DwFk"
 uri = "file://artifacts/mobile/assets/images/onboarding_success.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "802tY1qgQmOi_YourLKbi"
+uri = "file://.local/outputs/Adventurer-Club-Hub.pdf"
+type = "pdf"
+title = "Adventurer-Club-Hub.pdf"
