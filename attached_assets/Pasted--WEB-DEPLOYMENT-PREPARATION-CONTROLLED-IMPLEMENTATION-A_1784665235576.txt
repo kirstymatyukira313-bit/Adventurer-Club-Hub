@@ -1,0 +1,290 @@
+# WEB DEPLOYMENT PREPARATION — CONTROLLED IMPLEMENTATION
+
+Act as a senior software engineer with extensive experience in Expo SDK 54, Expo Router, React Native Web, Metro, TypeScript, and production deployment.
+
+The existing Adventurer Club Hub application is currently a functioning Expo application with:
+
+- Expo SDK ~54
+- Expo Router ~6
+- React Native
+- React Native Web installed
+- React DOM installed
+- Metro bundler
+- TypeScript
+- AsyncStorage for local persistence
+- Existing native Expo Go deployment workflow
+
+The application currently runs successfully as a mobile/Expo application.
+
+The goal is to add a proper browser-based web build pipeline so the app can eventually be hosted as a live web application.
+
+This is a controlled infrastructure and compatibility task.
+
+DO NOT redesign the application.
+
+DO NOT modify the existing visual design.
+
+DO NOT modify existing user flows unless required for web compatibility.
+
+DO NOT modify the data model.
+
+DO NOT migrate AsyncStorage to a database.
+
+DO NOT change the storage key:
+
+"adventurer_club_state_v1"
+
+Existing user data persistence must remain compatible.
+
+==================================================
+PHASE 1 — PRESERVE THE EXISTING APP
+==================================================
+
+Before making changes:
+
+1. Inspect the existing project structure.
+2. Confirm the current native/Expo Go build workflow.
+3. Confirm the current package scripts.
+4. Confirm the current AsyncStorage implementation.
+5. Confirm the current Expo Router configuration.
+
+Do not remove the existing native build process.
+
+The existing build script must continue to work.
+
+==================================================
+PHASE 2 — ADD A SEPARATE WEB BUILD PIPELINE
+==================================================
+
+Add a separate browser build command.
+
+Do not replace the existing native build script.
+
+Create a separate web build process equivalent to:
+
+expo export --platform web
+
+The web build must produce an actual browser-loadable static application.
+
+The output must not be:
+
+- an Expo Go QR landing page
+- a native OTA manifest server
+- a mobile-only bundle
+
+The output must be a real web application that can be served by a standard static hosting platform.
+
+Add a separate script if appropriate, such as:
+
+web:build
+
+Do not remove or break the existing:
+
+build
+
+serve
+
+dev
+
+typecheck
+
+scripts.
+
+==================================================
+PHASE 3 — WEB COMPATIBILITY AUDIT
+==================================================
+
+Audit all platform-specific packages and usages.
+
+Focus specifically on:
+
+- expo-notifications
+- expo-glass-effect
+- expo-haptics
+- expo-blur
+
+Do not modify packages unnecessarily.
+
+Only make changes required for reliable browser execution.
+
+==================================================
+PHASE 4 — EXPO NOTIFICATIONS
+==================================================
+
+expo-notifications does not support browser execution.
+
+Prevent native notification code from executing on web.
+
+Any code involving:
+
+- notification handlers
+- Android notification channels
+- notification permissions
+- notification scheduling
+
+must be protected by platform-aware logic.
+
+Native behavior must remain unchanged.
+
+On web:
+
+- the application must not crash
+- unsupported native APIs must not execute
+- existing reminder functionality should degrade gracefully
+
+Do not delete reminder functionality.
+
+If necessary, display an appropriate web-compatible fallback state.
+
+==================================================
+PHASE 5 — EXPO GLASS EFFECT
+==================================================
+
+Inspect every usage of expo-glass-effect.
+
+Determine whether the package has reliable web support.
+
+If it does not:
+
+- preserve the existing native implementation
+- provide a safe web fallback
+- do not redesign the component
+- preserve the existing visual hierarchy as closely as possible
+
+Do not remove visual elements unnecessarily.
+
+==================================================
+PHASE 6 — HAPTICS
+==================================================
+
+Inspect expo-haptics usage.
+
+Do not modify existing haptic interactions unless the web build requires it.
+
+The web version should gracefully no-op where haptics are unavailable.
+
+Native haptic behavior must remain unchanged.
+
+==================================================
+PHASE 7 — BLUR
+==================================================
+
+Inspect expo-blur usage.
+
+Keep the existing implementation if the web version renders correctly.
+
+Only provide a fallback if necessary for browser compatibility.
+
+Do not redesign the tab bar or other UI elements.
+
+==================================================
+PHASE 8 — ROUTING AND DEPLOYMENT CONFIGURATION
+==================================================
+
+Inspect the current expo-router configuration.
+
+The current Replit-specific origin configuration must not cause incorrect production web URLs.
+
+Remove or safely abstract any environment-specific assumptions tied exclusively to:
+
+- Replit
+- Replit deployment domains
+- Replit development environment variables
+
+Do not hardcode an arbitrary production domain.
+
+The web build must support deployment to a standard hosting provider.
+
+==================================================
+PHASE 9 — DATA PERSISTENCE PRESERVATION
+==================================================
+
+Do not change the data architecture.
+
+Continue using:
+
+AsyncStorage
+
+with the existing key:
+
+"adventurer_club_state_v1"
+
+The web implementation should continue using the existing AsyncStorage web compatibility layer.
+
+Do not:
+
+- migrate to localStorage manually
+- create a new storage key
+- reset state
+- overwrite existing data
+- create a database
+- change the state schema
+
+Existing data must remain compatible.
+
+==================================================
+PHASE 10 — VALIDATION
+==================================================
+
+After implementation:
+
+Run:
+
+- TypeScript validation
+- web build
+- local web preview
+
+Verify that the browser application:
+
+- loads successfully
+- navigates between screens
+- preserves the existing visual design
+- preserves the existing user flows
+- can create a club
+- can add members
+- can open lessons
+- can track lesson progress
+- can register attendance
+- can view attendance history
+- can record subscriptions
+- can record expenses
+- can edit profile information
+- can open support actions
+- can access resources
+
+Verify that:
+
+- no blank screens occur
+- no fatal runtime errors occur
+- no broken routes occur
+- no native-only APIs crash the browser
+- no existing mobile functionality is broken
+
+==================================================
+IMPORTANT
+==================================================
+
+This task is NOT a redesign.
+
+This task is NOT a database migration.
+
+This task is NOT a refactor.
+
+This task is NOT an opportunity to improve unrelated UI.
+
+Make the smallest safe changes required to make the existing Expo application produce a reliable browser-based web build.
+
+After implementation, provide:
+
+1. Files modified
+2. Scripts added or changed
+3. Web compatibility fixes made
+4. Any remaining limitations
+5. Exact command used to build the web application
+6. Exact command used to preview the web build locally
+7. Confirmation that the existing native workflow remains intact
+8. Confirmation that the existing AsyncStorage key and data architecture remain unchanged
+
+STOP after this task.
+
+Do not make additional feature changes.
