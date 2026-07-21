@@ -18,14 +18,14 @@
     },
     "android": {},
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/icon.png",
+      "output": "static",
+      "bundler": "metro"
     },
     "plugins": [
       [
         "expo-router",
-        {
-          "origin": "https://replit.com/"
-        }
+        {}
       ],
       "expo-font",
       "expo-web-browser",
